@@ -15,10 +15,9 @@
  * LCD D6                      digital pin 9  display pin 13
  * LCD D7                      digital pin 8  display pin 14
 
- * 10K resistor:
- * ends to +5V and ground
- * back light anode:+4.2V      wiper          display pin 15
- * back light cathode          wiper          display pin 16
+ * 220ohm resistor to +5V
+ * back light anode:+4.2V      220ohm         display pin 15
+ * back light cathode          GND	          display pin 16
  */
 
 // Include the DHT library
