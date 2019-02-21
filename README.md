@@ -15,10 +15,17 @@ Casing to hold everything
 
 Wires and soldering material  
 
+Note
+===============
+
+All commands in the following instructions are run on Linux  
+
+
 Set up Arduino IDE
 ===============
 
 Go to https://www.arduino.cc/en/main/software and download Arduino IDE for your architecture and system  
+>$ wget https://downloads.arduino.cc/arduino-1.8.8-linux64.tar.xz  
 >$ tar xvJf arduino-1.8.8-linux64.tar.xz -C ~/bin/  
 
 Get libraries 
