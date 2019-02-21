@@ -21,11 +21,14 @@
  */
 
 // Include the DHT library
-#include <dht11.h>
+#include <DHT.h>
 
 // Define DHT pin
-dht11 DHT11;  //Declare objects
-#define DHT11PIN 2  //Declare Pin Numbers
+#define DHTPIN 2  //Declare Pin Numbers
+#define DHTTYPE DHT11   // DHT 11 used
+//#define DHTTYPE DHT22   // DHT 22  (AM2302), AM2321
+//#define DHTTYPE DHT21   // DHT 21 (AM230
+DHT dht(DHTPIN, DHTTYPE);  // Initialize DHT sensor
 
 // The LCD library
 #include <LiquidCrystal.h>
@@ -66,10 +69,14 @@ void setup(void) {
 
 	Serial.println("ardBeeQueen");
 
-	//// Start up the 1.wire library
-	//lcd.setCursor(0, 2);
-	//lcd.print("Starting 1-wire...");
-	//sensors.begin();
+  dht.begin();  // start up dht sensors
+
+  /*
+	// Start up the 1.wire library
+	lcd.setCursor(0, 2);
+	lcd.print("Starting 1-wire...");
+	sensors.begin();
+  */
 
 	lcd.setCursor(0, 1);
 	lcd.print("Starting outputs");
@@ -85,8 +92,19 @@ void loop(void) {
 
 	Serial.print(" Requesting humidity and temperature...");
 
-	chk = DHT11.read(DHT11PIN);
+  // Reading temperature or humidity takes about 250 milliseconds!
+  // Sensor readings may also be up to 2 seconds 'old' (its a very slow sensor)
+  float hum = dht.readHumidity();
+	// Read temperature as Celsius (the default)
+  float temp = dht.readTemperature();
 
+  // Check if any reads failed and exit early (to try again).
+  if (isnan(hum) || isnan(temp)) {
+    Serial.println(F("Failed to read from DHT sensor!"));
+    return;
+  }
+  
+  /*
 	Serial.println("DONE");
 	switch (chk) {
 	case 0:
@@ -102,22 +120,25 @@ void loop(void) {
 		Serial.println("Unknown error");
 		break;
 	}
+  */
 
-	humidity = DHT11.humidity, 2;
-	temperature = DHT11.temperature, 2;
+  /*
+	dewPoint = dewPointFunction(temp, hum);
+	dewPointFast = dewPointFastFunction(temp, hum);
 
-	dewPoint = dewPointFunction(DHT11.temperature, DHT11.humidity);
-	dewPointFast = dewPointFastFunction(DHT11.temperature, DHT11.humidity);
-
+  // Compute heat index in Celsius (isFahreheit = false)
+  float hic = dht.computeHeatIndex(t, h, false);  
+  */
+  
 	Serial.print("Temperature: ");
-	Serial.println(temperature);
+	Serial.println(temp);
 	lcd.setCursor(5, 0);
-	lcd.print(temperature, 1);
+	lcd.print(temp, 1);
 
 	Serial.print("Humidity: ");
-	Serial.println(humidity);
+	Serial.println(hum);
 	lcd.setCursor(0, 1);
-	lcd.print(humidity);
+	lcd.print(hum);
 
 	Serial.print("Dew point: ");
 	Serial.println(dewPoint);
@@ -146,7 +167,8 @@ void loop(void) {
 
 		Serial.println("At goal temp!");
 	}
-	delay(1000);
+	
+  delay(2000);  // Wait a few seconds between measurements
 }
 
 // dewPoint function NOAA
@@ -173,4 +195,3 @@ double dewPointFastFunction(double celsius, double humidity) {
 	double Td = (b * temp) / (a - temp);
 	return Td;
 }
-
