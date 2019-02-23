@@ -55,8 +55,10 @@ float goalTemp = 27.8;
 #define COOLING_RELAY  4  // Relay cooling
 
 void setup(void) {
+/*
 	// set up the LCD's number of columns and rows:
 	Serial.println("Initializing LCD...");
+*/
 
 	lcd.begin(lcdColumns, lcdRows);
 	// Print a message to the LCD.
@@ -140,12 +142,14 @@ void loop(void) {
 	lcd.setCursor(0, 1);
 	lcd.print(hum);
 
+  /*
 	Serial.print("Dew point: ");
 	Serial.println(dewPoint);
 
 	Serial.print("Dew point fast: ");
 	Serial.println(dewPointFast);
-
+  */
+  
 	if (temperature < goalTemp) {
 		digitalWrite(HEATING_RELAY, 0);
 		digitalWrite(COOLING_RELAY, 1);
