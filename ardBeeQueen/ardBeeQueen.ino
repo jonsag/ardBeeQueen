@@ -11,7 +11,7 @@
  * LCD R/W pin                 GND            display pin 5
  * LCD Enable pin              digital pin 12 display pin 6
  * LCD D4                      digital pin 11 display pin 11
- * LCD D5                      digital pin 10 display pin 12
+ * LCD D5                      digital pin 4 display pin 12
  * LCD D6                      digital pin 9  display pin 13
  * LCD D7                      digital pin 8  display pin 14
 
@@ -24,16 +24,33 @@
 #include <DHT.h>
 
 // Define DHT pin
-#define DHTPIN 2  //Declare Pin Numbers
-#define DHTTYPE DHT11   // DHT 11 used
-//#define DHTTYPE DHT22   // DHT 22  (AM2302), AM2321
+#define DHTPIN 2  // Declare Pin Number
+//#define DHTTYPE DHT11   // DHT 11 used
+#define DHTTYPE DHT22   // DHT 22  (AM2302), AM2321
 //#define DHTTYPE DHT21   // DHT 21 (AM230
 DHT dht(DHTPIN, DHTTYPE);  // Initialize DHT sensor
+
+// Relay pins
+#define HEATING_RELAY  3  // Relay heating
+#define COOLING_RELAY  4  // Relay cooling
+
+///// Rotary encoder
+const int encoderCLK = 5; // Rotary encoder CLK signal input pin
+const int encoderDT = 6; // Rotary encoder DT signal input pin
+const int encoderSW = 7; // Rotary encoders switch input pin, goes LOW when pressed
+int encoderCLKState = 0;
+int encoderDTState = 0;
+int encoderSWState = 0;
+int encoderDTStateLast = 0;
+int encoderSWStateLast = 0;
+
+long encoderSWTimeMillis = 0; // the last time encoder button was toggled
+long debounce = 200;   // the debounce time, increase if the output flickers
 
 // The LCD library
 #include <LiquidCrystal.h>
 
-// initialize the library with the numbers of the interface pins
+// Initialize the library with the numbers of the interface pins
 LiquidCrystal lcd(13, 12, 11, 10, 9, 8);
 
 // Columns and rows of the LCD
@@ -41,18 +58,29 @@ int lcdColumns = 16;
 int lcdRows = 2;
 
 // Variables
-float humidity = 0;
-float temperature = 0;
+float hum = 0;
+float temp = 0;
+
 double dewPoint = 0;
 double dewPointFast = 0;
-int chk = 0;
+float hic = 0;
+//int chk = 0;
 
-// The goal temp
-float goalTemp = 27.8;
+String valString = ""; // for calculation of length of values
+int valLength;
 
-// Relay pins
-#define HEATING_RELAY  3  // Relay heating
-#define COOLING_RELAY  4  // Relay cooling
+// The goal temp, in degrees celsius
+float setPointTemp = 27.8;
+
+// Wait time between reads, in milliseconds
+int waitTime = 2000;
+
+// Text to print before temps
+String setPointTempText ="SP:";
+String actualTempText = "A:";
+
+// Buffer to store float to string
+char dtostrfbuffer[5];
 
 void setup(void) {
 /*
@@ -61,50 +89,87 @@ void setup(void) {
 */
 
 	lcd.begin(lcdColumns, lcdRows);
-	// Print a message to the LCD.
+	// Print a message to the LCD
+  lcd.setCursor(0, 0);
+	lcd.print("ardBeeQueen")
+	lcd.setCursor(0,1);
 	lcd.print("Booting...");
 
 	// start serial port
 	lcd.setCursor(0, 1);
-	lcd.print("Starting serial ");
+	lcd.print("Starting serial...");
 	Serial.begin(9600);
 
 	Serial.println("ardBeeQueen");
 
+  lcd.setCursor(0, 1);
+  lcd.print("Starting sensor...");
   dht.begin();  // start up dht sensors
 
-  /*
-	// Start up the 1.wire library
-	lcd.setCursor(0, 2);
-	lcd.print("Starting 1-wire...");
-	sensors.begin();
-  */
-
 	lcd.setCursor(0, 1);
-	lcd.print("Starting outputs");
+	lcd.print("Starting outputs...");
 	pinMode(HEATING_RELAY, OUTPUT);
 	pinMode(COOLING_RELAY, OUTPUT);
+
+  // Define rotary encoder
+  pinMode(encoderCLK, INPUT);
+  pinMode(encoderDT, INPUT);
+  pinMode(encoderSW, INPUT);
+
+ lcd.clear();
 
 }
 void loop(void) {
 
-	lcd.clear();
-	lcd.setCursor(0, 0);
-	lcd.print(goalTemp, 1);
+  // Handle rotary encoder
+  encoderCLKState = digitalRead(encoderCLK);
+  encoderDTState = digitalRead(encoderDT);
+  encoderSWState = digitalRead(encoderSW);
 
-	Serial.print(" Requesting humidity and temperature...");
+  if ((encoderDTStateLast == 0) && (encoderDTState == 1)) {
+    if (encoderCLKState == 0) {
+      setPointTemp = setPointTemp - 0.1;
+    } else {
+      setPointTemp = setPointTemp + 0.1;
+    }
+  }
+  encoderDTStateLast = encoderDTState;
+
+  if (encoderSWState != encoderSWStateLast) {
+    if (encoderSWState == 0 && encoderSWStateLast == 1 && millis() - encoderSWTimeMillis > debounce) {
+      //
+      encoderSWStateLast = encoderSWState;
+      encoderSWTimeMillis = millis();
+    }
+  }
+
+	lcd.setCursor(0, 0);
+  lcd.print(setPointTempText);
+  valLength = setPointTempText.length();
+  lcd.setCursor(valLength, 0);
+	lcd.print(setPointTemp, 1);
+  dtostrf(setPointTemp,1, 1, dtostrfbuffer);
+  valLength = valLength + strlen(dtostrfbuffer);
+	lcd.setCursor(valLength, 0);
+  lcd.print((char)223);
+
+  Serial.println();
+	Serial.println(" Requesting humidity and temperature...");
 
   // Reading temperature or humidity takes about 250 milliseconds!
   // Sensor readings may also be up to 2 seconds 'old' (its a very slow sensor)
-  float hum = dht.readHumidity();
+  hum = dht.readHumidity();
 	// Read temperature as Celsius (the default)
-  float temp = dht.readTemperature();
-
+  temp = dht.readTemperature();
+  
   // Check if any reads failed and exit early (to try again).
   if (isnan(hum) || isnan(temp)) {
     Serial.println(F("Failed to read from DHT sensor!"));
     return;
   }
+
+  //hum = round(hum); // rounding to nearest whole value
+  //temp = round(temp * 10) / 10.0; // rounding to one decimal place
   
   /*
 	Serial.println("DONE");
@@ -124,43 +189,53 @@ void loop(void) {
 	}
   */
 
-  /*
+  // Calculate dew points
 	dewPoint = dewPointFunction(temp, hum);
 	dewPointFast = dewPointFastFunction(temp, hum);
 
-  // Compute heat index in Celsius (isFahreheit = false)
-  float hic = dht.computeHeatIndex(t, h, false);  
-  */
+  // Compute heat index in Celsius (isFahrenheit = false)
+  hic = dht.computeHeatIndex(temp, hum, false);  
+
+  Serial.print("Dew Point: ");
+  Serial.println(dewPoint);
+  Serial.print("Dew Point Fast: ");
+  Serial.println(dewPointFast);
+  Serial.print("Heat Index: ");
+  Serial.println(hic);
   
 	Serial.print("Temperature: ");
 	Serial.println(temp);
-	lcd.setCursor(5, 0);
+  lcd.setCursor(2 + valLength, 0);
+  lcd.print(actualTempText);
+  valLength = valLength + actualTempText.length();
+  lcd.setCursor(2 + valLength, 0);
 	lcd.print(temp, 1);
+  dtostrf(temp,1, 1, dtostrfbuffer);
+  valLength = valLength + strlen(dtostrfbuffer);
+  lcd.setCursor(2 + valLength, 0);
+  lcd.print((char)223);
 
 	Serial.print("Humidity: ");
 	Serial.println(hum);
 	lcd.setCursor(0, 1);
-	lcd.print(hum);
-
-  /*
-	Serial.print("Dew point: ");
-	Serial.println(dewPoint);
-
-	Serial.print("Dew point fast: ");
-	Serial.println(dewPointFast);
-  */
+  lcd.print("Humidity:");
+  lcd.setCursor(9, 1);
+	lcd.print(hum, 0);
+  valLength = intToStringToLength(hum);
+  lcd.setCursor(9 + valLength, 1);
+  lcd.print("%  ");
   
-	if (temperature < goalTemp) {
-		digitalWrite(HEATING_RELAY, 0);
-		digitalWrite(COOLING_RELAY, 1);
-
-		Serial.println("Heating...");
-		lcd.setCursor(15, 0);
-		lcd.print("H");
-
-	} else if (temperature > goalTemp) {
+	if (temp < setPointTemp) {
 		digitalWrite(HEATING_RELAY, 1);
 		digitalWrite(COOLING_RELAY, 0);
+
+		Serial.println("Heating...");
+		lcd.setCursor(15, 1);
+		lcd.print("H");
+
+	} else if (temp > setPointTemp) {
+		digitalWrite(HEATING_RELAY, 0);
+		digitalWrite(COOLING_RELAY, 1);
 
 		Serial.println("Cooling...");
 		lcd.setCursor(15, 1);
@@ -170,9 +245,11 @@ void loop(void) {
 		digitalWrite(COOLING_RELAY, 0);
 
 		Serial.println("At goal temp!");
+    lcd.setCursor(15, 1);
+    lcd.print(" ");
 	}
 	
-  delay(2000);  // Wait a few seconds between measurements
+  delay(waitTime);  // Wait between measurements
 }
 
 // dewPoint function NOAA
@@ -198,4 +275,10 @@ double dewPointFastFunction(double celsius, double humidity) {
 	double temp = (a * celsius) / (b + celsius) + log(humidity / 100);
 	double Td = (b * temp) / (a - temp);
 	return Td;
+}
+
+int intToStringToLength(int val) {
+  valString = String(val);
+  valLength = valString.length();
+  return valLength;
 }
