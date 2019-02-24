@@ -31,8 +31,8 @@
 DHT dht(DHTPIN, DHTTYPE);  // Initialize DHT sensor
 
 // Relay pins
-#define HEATING_RELAY  3  // Relay heating
-#define COOLING_RELAY  4  // Relay cooling
+const int heatingRelay = 3  // Relay heating
+const int coolingRelay = 4  // Relay cooling
 
 ///// Rotary encoder
 const int encoderCLK = 5; // Rotary encoder CLK signal input pin
@@ -88,6 +88,7 @@ void setup(void) {
 	Serial.println("Initializing LCD...");
 */
 
+  // Start LCD
 	lcd.begin(lcdColumns, lcdRows);
 	// Print a message to the LCD
   lcd.setCursor(0, 0);
@@ -102,14 +103,16 @@ void setup(void) {
 
 	Serial.println("ardBeeQueen");
 
+  // Start DHT sensor
   lcd.setCursor(0, 1);
   lcd.print("Starting sensor...");
   dht.begin();  // start up dht sensors
 
+  // Define in- and outputs
 	lcd.setCursor(0, 1);
 	lcd.print("Starting outputs...");
-	pinMode(HEATING_RELAY, OUTPUT);
-	pinMode(COOLING_RELAY, OUTPUT);
+	pinMode(heatingRelay, OUTPUT);
+	pinMode(coolingRelay, OUTPUT);
 
   // Define rotary encoder
   pinMode(encoderCLK, INPUT);
@@ -226,23 +229,23 @@ void loop(void) {
   lcd.print("%  ");
   
 	if (temp < setPointTemp) {
-		digitalWrite(HEATING_RELAY, 1);
-		digitalWrite(COOLING_RELAY, 0);
+		digitalWrite(heatingRelay, 1);
+		digitalWrite(coolingRelay, 0);
 
 		Serial.println("Heating...");
 		lcd.setCursor(15, 1);
 		lcd.print("H");
 
 	} else if (temp > setPointTemp) {
-		digitalWrite(HEATING_RELAY, 0);
-		digitalWrite(COOLING_RELAY, 1);
+		digitalWrite(heatingRelay, 0);
+		digitalWrite(coolingRelay, 1);
 
 		Serial.println("Cooling...");
 		lcd.setCursor(15, 1);
 		lcd.print("C");
 	} else {
-		digitalWrite(HEATING_RELAY, 0);
-		digitalWrite(COOLING_RELAY, 0);
+		digitalWrite(heatingRelay, 0);
+		digitalWrite(coolingRelay, 0);
 
 		Serial.println("At goal temp!");
     lcd.setCursor(15, 1);
