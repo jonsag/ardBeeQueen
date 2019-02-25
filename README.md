@@ -94,7 +94,17 @@ Download fritzing at http://fritzing.org/download/
 
 >$ wget http://fritzing.org/download/0.9.3b/linux-64bit/fritzing-0.9.3b.linux.AMD64.tar.bz2  
 >$ tar jxvf ~/Downloads/fritzing-0.9.3b.linux.AMD64.tar.bz2 -C ~/bin/  
->$ ln -s ln -s fritzing-0.9.3b.linux.AMD64/Fritzing ~/bin/fritzing  
+>$ ln -s fritzing-0.9.3b.linux.AMD64/Fritzing ~/bin/fritzing  
+
+
+Autodesk EAGLE
+===================
+Download EAGLE at https://www.autodesk.com/products/eagle/free-download  
+
+>$ tar xvzf Autodesk_EAGLE_9.3.1_English_Linux_64bit.tar.gz -C ~/bin  
+>$ ln -s eagle-9.3.1/eagle ~/bin/eagle  
+
+Start and sign in with your Autodesk account  
 
 
 
