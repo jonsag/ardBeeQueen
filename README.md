@@ -12,11 +12,14 @@ Parts needed
 1 x Rotary encoder, kjell.com art#87918  
 1 x 10kohm Potentiometer, kjell.com art#90633  
 1 x 220ohm resistor  
+1 x 10K ohm resistor  
+2 x 0,47uF capacitor  
 
 Casing to hold everything
 
 Wires and soldering material  
 
+If you want to build a PCB using the Gerber file you will also need some headers and connnectors.  
 
 Building electrical  
 ===============
@@ -91,6 +94,7 @@ Green cable -> TXD
 White cable -> RXD  
 Red cable -> VCC (5V)  
 
+You will have to press the reset button on the arduino to reset it right before the upload from Arduino IDE.  
 
 Fritzing  
 ===============
@@ -99,6 +103,24 @@ Download fritzing at http://fritzing.org/download/
 >$ wget http://fritzing.org/download/0.9.3b/linux-64bit/fritzing-0.9.3b.linux.AMD64.tar.bz2  
 >$ tar jxvf ~/Downloads/fritzing-0.9.3b.linux.AMD64.tar.bz2 -C ~/bin/  
 >$ ln -s fritzing-0.9.3b.linux.AMD64/Fritzing ~/bin/fritzing  
+
+
+EasyEDA  
+==============
+Use easyEDA online at https://easyeda.com/editor or download client from https://easyeda.com/page/download  
+
+>$ wget https://image.easyeda.com/files/easyeda-client-linux-x64.zip  
+>$ unzip easyeda-client-linux-x64.zip  
+>$ cd easyeda-client-linux-x64  
+>$ sudo bash install.sh  
+
+Download local router from https://docs.easyeda.com/en/PCB/Route/index.html#Local-Auto-Router  
+>$ wget https://image.easyeda.com/files/EasyEDA-Router-v0.8.1.zip  
+>$ unzip EasyEDA-Router-v0.8.1.zip  
+>$ cd EasyEDA-Router-v0.8.1  
+
+Start router with  
+>$ bash lin64.sh  
 
 
 Autodesk EAGLE
