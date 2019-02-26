@@ -173,6 +173,8 @@ void loop(void) {
     encoderDTStateLast = encoderDTState;
   }
 
+  printSetPoint();
+
   // Check if button is manipulated
   if ( encoderSWState != encoderSWStateLast ) { 
     if ( encoderSWState == 0 ) {
@@ -271,6 +273,8 @@ void printSetPoint() {
   valLength = valLength + strlen(dtostrfbuffer);
   lcd.setCursor(valLength, 0);
   lcd.print((char)223);
+  lcd.setCursor(1 + valLength, 0);
+  lcd.print(" ");
 }
 
 void printActualValues() {
@@ -299,6 +303,8 @@ void printActualValues() {
   valLength = valLength + strlen(dtostrfbuffer);
   lcd.setCursor(2 + valLength, 0);
   lcd.print((char)223);
+  lcd.setCursor(3 + valLength, 0);
+  lcd.print(" ");
 
   Serial.print("Humidity: ");
   Serial.println(hum);

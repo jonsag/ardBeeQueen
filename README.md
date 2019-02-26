@@ -17,16 +17,20 @@ Casing to hold everything
 
 Wires and soldering material  
 
+
+Building electrical  
+===============
+Use schemes ardBeeQueenFritz* or Schematic_ardBeeQueen-v2_ardBeeQueen-v2_* to build.  
+If you do not use the encoder you must still pull up D7 with a 10K resistor to VCC.  
+
 Note
 ===============
-
 All commands in the following instructions are run on Linux  
 All links are valid and versions are the latest as of february 2019  
 
 
 Set up Arduino IDE
 ===============
-
 Go to https://www.arduino.cc/en/main/software and download Arduino IDE for your architecture and system  
 >$ wget https://downloads.arduino.cc/arduino-1.8.8-linux64.tar.xz  
 >$ tar xvJf arduino-1.8.8-linux64.tar.xz -C ~/bin/  
