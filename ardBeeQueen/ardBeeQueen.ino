@@ -73,7 +73,6 @@ float temp = 0;
 double dewPoint = 0;
 double dewPointFast = 0;
 float hic = 0;
-//int chk = 0;
 
 // For calculation of length of values
 String valString = "";
@@ -158,8 +157,9 @@ void loop(void) {
   encoderDTState = digitalRead(encoderDT);
   encoderSWState = digitalRead(encoderSW);
 
+  // Check encoder if button is pressed
   if ( encoderSWState == 0 ) { // Button is pressed
-    if ((encoderDTStateLast == 0) && (encoderDTState == 1)) {
+    if ((encoderDTStateLast == 0) && (encoderDTState == 1)) { 
       if (encoderCLKState == 0) {
         setPointTemp += 0.1;
         Serial.print("Counting up set point. New value: ");
@@ -173,7 +173,8 @@ void loop(void) {
     encoderDTStateLast = encoderDTState;
   }
 
-  if ( encoderSWState != encoderSWStateLast ) {
+  // Check if button is manipulated
+  if ( encoderSWState != encoderSWStateLast ) { 
     if ( encoderSWState == 0 ) {
       Serial.println("Button is down");
     } else {
@@ -184,18 +185,6 @@ void loop(void) {
     }
     encoderSWStateLast = encoderSWState;
   }
-  
-  /*
-  if (encoderSWState != encoderSWStateLast) {
-    if (encoderSWState == 0 && encoderSWStateLast == 1 && millis() - encoderSWTimeMillis > debounce) {
-      //
-      encoderSWStateLast = encoderSWState;
-      encoderSWTimeMillis = millis();
-    }
-  }
-  */
-
-  printSetPoint();
 
   if ( encoderSWState ) { // Only read values if button is UP
     if ( millis() - readMillis >= waitTime ) {
@@ -213,56 +202,32 @@ void loop(void) {
         return;
       }
   
-      printActualValues(); // Print read values to serial and LCD
+      printActualValues(); // Print measured values to serial and LCD
       
       readMillis = millis();
     }
   }
-  
-  //hum = round(hum); // rounding to nearest whole value
-  //temp = round(temp * 10) / 10.0; // rounding to one decimal place
 
-  /*
-    Serial.println("DONE");
-    switch (chk) {
-    case 0:
-  	Serial.println("OK");
-  	break;
-    case -1:
-  	Serial.println("Checksum error");
-  	break;
-    case -2:
-  	Serial.println("Time out error");
-  	break;
-    default:
-  	Serial.println("Unknown error");
-  	break;
-    }
-  */
 
-  if (temp < setPointTemp) {
+  if ( temp < setPointTemp && encoderSWState ) { // If temp is below set point and button is up
     digitalWrite(heatingRelay, 1);
     digitalWrite(coolingRelay, 0);
-
     heatState = 1;
-  } else if (temp > setPointTemp) {
+  } else if ( temp > setPointTemp && encoderSWState ) { // If temp is above set point and button is up
     digitalWrite(heatingRelay, 0);
     digitalWrite(coolingRelay, 1);
-
     heatState = 0;
   } else {
     digitalWrite(heatingRelay, 0);
     digitalWrite(coolingRelay, 0);
-
     heatState = 2;
   }
 
-  if ( heatState != heatStateLast ) {
+  if ( heatState != heatStateLast ) { // If there has been a change in heating or cooling
     printHeatState();
     heatStateLast = heatState;
   }
 
-  //delay(waitTime);  // Wait between measurements
 }
 
 // dewPoint function NOAA
@@ -356,8 +321,8 @@ void printHeatState() {
     lcd.setCursor(15, 1);
     lcd.print("H");
   } else {
-        Serial.println("At goal temp!");
+        Serial.println("At goal temp or waiting for button to come up");
     lcd.setCursor(15, 1);
-    lcd.print(" ");
+    lcd.print("W");
   }
 }
