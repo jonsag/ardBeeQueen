@@ -26,6 +26,18 @@ Building electrical
 Use schemes ardBeeQueenFritz* or Schematic_ardBeeQueen-v2_ardBeeQueen-v2_* to build.  
 If you do not use the encoder you must still pull up D7 with a 10K resistor to VCC.  
 
+
+Eagle PCB  
+===============
+If using the 50x52 PCB in Documents/Eagle directory, you can mount it in box electrokit.com, art#12109003  
+Outside measures: 69 x 102 x 37 mm  
+Inside measures: 63 x 96 x 33 mm  
+
+If using the 105x84 PCB in Documents/Eagle directory, you can mount it in box electrokit.com, art#12109005  
+Outside measures: 103 x 148 x 56 mm  
+Insode measures: 96 x 142 x 52 mm  
+
+
 Note
 ===============
 All commands in the following instructions are run on Linux  
