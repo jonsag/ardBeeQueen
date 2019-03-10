@@ -11967,16 +11967,16 @@ Sparkfun.com</description>
 <segment>
 <pinref part="U$1" gate="G$1" pin="D3"/>
 <pinref part="SV2" gate="G$1" pin="SIG"/>
-<wire x1="152.4" y1="190.5" x2="223.52" y2="190.5" width="0.1524" layer="91"/>
+<wire x1="223.52" y1="190.5" x2="152.4" y2="190.5" width="0.1524" layer="91"/>
 </segment>
 </net>
 <net name="N$14" class="0">
 <segment>
-<wire x1="170.18" y1="172.72" x2="170.18" y2="187.96" width="0.1524" layer="91"/>
 <wire x1="170.18" y1="187.96" x2="223.52" y2="187.96" width="0.1524" layer="91"/>
 <pinref part="U$1" gate="G$1" pin="D4"/>
+<wire x1="170.18" y1="187.96" x2="170.18" y2="172.72" width="0.1524" layer="91"/>
 <pinref part="SV3" gate="G$1" pin="SIG"/>
-<wire x1="152.4" y1="172.72" x2="170.18" y2="172.72" width="0.1524" layer="91"/>
+<wire x1="170.18" y1="172.72" x2="152.4" y2="172.72" width="0.1524" layer="91"/>
 </segment>
 </net>
 <net name="N$3" class="0">
