@@ -83,8 +83,8 @@ int valLength;
 float setPointTemp = 34.5;
 
 // Wait time between reads, in milliseconds
-long readMillis = 0; 
-int waitTime = 2000;
+long readMillis = 0; // stores millis
+int waitTime = 2000; // millis to wait between reads
 
 // Text to print before temps
 String setPointTempText = "SP:";
@@ -164,7 +164,7 @@ void setup(void) {
 }
 void loop(void) {
 
-  // Handle rotary encoder
+  // read rotary encoder
   encoderCLKState = digitalRead(encoderCLK);
   encoderDTState = digitalRead(encoderDT);
   encoderSWState = digitalRead(encoderSW);
@@ -221,7 +221,6 @@ void loop(void) {
       readMillis = millis();
     }
   }
-
 
   if ( temp < setPointTemp && encoderSWState ) { // If temp is below set point and button is up
     digitalWrite(heatingRelay, 1);
