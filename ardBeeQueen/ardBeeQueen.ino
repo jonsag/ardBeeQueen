@@ -33,6 +33,7 @@ int eeAddr = 0; // Address to store the set point temp
 //#define DHTTYPE DHT11   // DHT 11 used
 #define DHTTYPE DHT22   // DHT 22  (AM2302), AM2321
 //#define DHTTYPE DHT21   // DHT 21 (AM230)
+// Set up DHT sensor
 DHT dht(DHTPIN, DHTTYPE);  // Initialize DHT sensor
 
 // Relay pins
@@ -79,7 +80,7 @@ String valString = "";
 int valLength;
 
 // The goal temp, in degrees celsius
-float setPointTemp = 27.8;
+float setPointTemp = 34.5;
 
 // Wait time between reads, in milliseconds
 long readMillis = 0; 
@@ -100,16 +101,22 @@ void setup(void) {
   lcd.setCursor(0, 0);
   lcd.print("ardBeeQueen");
   lcd.setCursor(0, 1);
-  lcd.print("Booting...");
+  lcd.print("Booting ...");
 
   // start serial port
   lcd.setCursor(0, 1);
-  lcd.print("Starting serial...");
+  lcd.print("Starting serial ...");
   Serial.begin(9600);
 
   Serial.println("ardBeeQueen");
+  Serial.println("20191006");
+  Serial.println("by Jon Sagebrand");
+  Serial.println("jonsagebrand@gmail.com");
 
-  
+  // Read set temp from eeprom
+  Serial.println("Reading last temp from eeprom ...");
+  lcd.setCursor(0, 1);
+  lcd.print("Reading last temp ...");
   float f = 0.00f;  
   EEPROM.get( eeAddr, f );
   Serial.println( f ); 
@@ -130,17 +137,22 @@ void setup(void) {
   }
 
   // Start DHT sensor
+  Serial.println("Starting DHT sensor ...");
   lcd.setCursor(0, 1);
-  lcd.print("Starting sensor...");
+  lcd.print("Starting sensor ...");
   dht.begin();  // start up dht sensors
 
   // Define in- and outputs
+  Serial.println("Starting outputs  ...");
   lcd.setCursor(0, 1);
-  lcd.print("Starting outputs...");
+  lcd.print("Starting outputs ...");
   pinMode(heatingRelay, OUTPUT);
   pinMode(coolingRelay, OUTPUT);
 
   // Define rotary encoder
+  Serial.println("Starting inputs ...");
+  lcd.setCursor(0, 1);
+  lcd.print("Starting inputs ...");
   pinMode(encoderCLK, INPUT);
   pinMode(encoderDT, INPUT);
   pinMode(encoderSW, INPUT);
@@ -175,7 +187,7 @@ void loop(void) {
 
   printSetPoint();
 
-  // Check if button is manipulated
+  // Check if button is released
   if ( encoderSWState != encoderSWStateLast ) { 
     if ( encoderSWState == 0 ) {
       Serial.println("Button is down");
@@ -214,15 +226,15 @@ void loop(void) {
   if ( temp < setPointTemp && encoderSWState ) { // If temp is below set point and button is up
     digitalWrite(heatingRelay, 1);
     digitalWrite(coolingRelay, 0);
-    heatState = 1;
+    heatState = 1; // heating
   } else if ( temp > setPointTemp && encoderSWState ) { // If temp is above set point and button is up
     digitalWrite(heatingRelay, 0);
     digitalWrite(coolingRelay, 1);
-    heatState = 0;
+    heatState = 0; // cooling
   } else {
     digitalWrite(heatingRelay, 0);
     digitalWrite(coolingRelay, 0);
-    heatState = 2;
+    heatState = 2; // at correct temp
   }
 
   if ( heatState != heatStateLast ) { // If there has been a change in heating or cooling
@@ -257,22 +269,22 @@ double dewPointFastFunction(double celsius, double humidity) {
   return Td;
 }
 
-int intToStringToLength(int val) {
+int intToStringToLength(int val) { // return how many numbers in integer
   valString = String(val);
   valLength = valString.length();
   return valLength;
 }
 
-void printSetPoint() {
+void printSetPoint() { // prints set point temp to LCD
   lcd.setCursor(0, 0);
   lcd.print(setPointTempText);
-  valLength = setPointTempText.length();
+  valLength = setPointTempText.length(); // number of characters before digits
   lcd.setCursor(valLength, 0);
-  lcd.print(setPointTemp, 1);
+  lcd.print(setPointTemp, 1); // prints set point
   dtostrf(setPointTemp, 1, 1, dtostrfbuffer);
-  valLength = valLength + strlen(dtostrfbuffer);
+  valLength = valLength + strlen(dtostrfbuffer); // number if charaters before digits + number of digits
   lcd.setCursor(valLength, 0);
-  lcd.print((char)223);
+  lcd.print((char)223); // prints degree sign
   lcd.setCursor(1 + valLength, 0);
   lcd.print(" ");
 }
@@ -294,6 +306,7 @@ void printActualValues() {
 
   Serial.print("Temperature: ");
   Serial.println(temp);
+  
   lcd.setCursor(2 + valLength, 0);
   lcd.print(actualTempText);
   valLength = valLength + actualTempText.length();
