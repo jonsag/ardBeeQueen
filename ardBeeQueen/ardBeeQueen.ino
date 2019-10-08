@@ -109,17 +109,18 @@ void setup(void) {
   Serial.begin(9600);
 
   Serial.println("ardBeeQueen");
-  Serial.println("20191006");
+  Serial.println("20191008");
   Serial.println("by Jon Sagebrand");
   Serial.println("jonsagebrand@gmail.com");
+  Serial.println();
 
   // Read set temp from eeprom
   Serial.println("Reading last temp from eeprom ...");
   lcd.setCursor(0, 1);
   lcd.print("Reading last temp ...");
-  float f = 0.00f;  
+  float f = 0.00f;
   EEPROM.get( eeAddr, f );
-  Serial.println( f ); 
+  Serial.println( f );
 
   // Check if there is a value stored in eeprom
   // If so, then use it as set point
@@ -134,6 +135,7 @@ void setup(void) {
     Serial.println(f);
     Serial.println("Using it as set point temperature");
     setPointTemp = f;
+    Serial.println();
   }
 
   // Start DHT sensor
@@ -161,6 +163,9 @@ void setup(void) {
 
   printSetPoint();
 
+  Serial.println("Program starts ...");
+  Serial.println();
+
 }
 void loop(void) {
 
@@ -171,7 +176,7 @@ void loop(void) {
 
   // Check encoder if button is pressed
   if ( encoderSWState == 0 ) { // Button is pressed
-    if ((encoderDTStateLast == 0) && (encoderDTState == 1)) { 
+    if ((encoderDTStateLast == 0) && (encoderDTState == 1)) {
       if (encoderCLKState == 0) {
         setPointTemp += 0.1;
         Serial.print("Counting up set point. New value: ");
@@ -188,7 +193,7 @@ void loop(void) {
   printSetPoint();
 
   // Check if button is released
-  if ( encoderSWState != encoderSWStateLast ) { 
+  if ( encoderSWState != encoderSWStateLast ) {
     if ( encoderSWState == 0 ) {
       Serial.println("Button is down");
     } else {
@@ -198,26 +203,24 @@ void loop(void) {
       EEPROM.put(eeAddr, setPointTemp);
     }
     encoderSWStateLast = encoderSWState;
+    Serial.println();
   }
 
   if ( encoderSWState ) { // Only read values if button is UP
     if ( millis() - readMillis >= waitTime ) {
-      Serial.println();
-      Serial.println(" Requesting humidity and temperature...");
+      Serial.println("Requesting humidity and temperature ...");
       // Reading temperature or humidity takes about 250 milliseconds!
       // Sensor readings may also be up to 2 seconds 'old' (its a very slow sensor)
       hum = dht.readHumidity();
       // Read temperature as Celsius (the default)
       temp = dht.readTemperature();
-    
+
       // Check if any reads failed and exit early (to try again).
       if (isnan(hum) || isnan(temp)) {
         Serial.println(F("Failed to read from DHT sensor!"));
         return;
       }
-  
       printActualValues(); // Print measured values to serial and LCD
-      
       readMillis = millis();
     }
   }
@@ -305,7 +308,7 @@ void printActualValues() {
 
   Serial.print("Temperature: ");
   Serial.println(temp);
-  
+
   lcd.setCursor(2 + valLength, 0);
   lcd.print(actualTempText);
   valLength = valLength + actualTempText.length();
@@ -327,6 +330,8 @@ void printActualValues() {
   valLength = intToStringToLength(hum);
   lcd.setCursor(9 + valLength, 1);
   lcd.print("%  ");
+
+  Serial.println();
 }
 
 void printHeatState() {
@@ -339,8 +344,9 @@ void printHeatState() {
     lcd.setCursor(15, 1);
     lcd.print("H");
   } else {
-        Serial.println("At goal temp or waiting for button to come up");
+    Serial.println("At goal temp or waiting for button to come up");
     lcd.setCursor(15, 1);
     lcd.print("W");
   }
+  Serial.println();
 }

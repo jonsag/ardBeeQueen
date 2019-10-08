@@ -47,9 +47,9 @@ All links are valid and versions are the latest as of february 2019
 Set up Arduino IDE
 ===============
 Go to https://www.arduino.cc/en/main/software and download Arduino IDE for your architecture and system  
->$ wget https://downloads.arduino.cc/arduino-1.8.8-linux64.tar.xz  
->$ tar xvJf arduino-1.8.8-linux64.tar.xz -C ~/bin/  
->$ ln -s arduino-1.8.8/arduino ~/bin/arduino  
+>$ wget https://downloads.arduino.cc/arduino-1.8.10-linux64.tar.xz  
+>$ tar xvJf arduino-1.8.10-linux64.tar.xz -C ~/bin/  
+>$ ln -s arduino-1.8.10/arduino ~/bin/arduino  
 
 Get libraries 
 ---------------
@@ -57,16 +57,16 @@ Get libraries
 Adafruit Unified Sensor library  
 ---------------
 Download library from https://www.arduinolibraries.info/libraries/adafruit-unified-sensor  
->$ wget http://downloads.arduino.cc/libraries/github.com/adafruit/Adafruit_Unified_Sensor-1.0.2.zip  
->$ unzip Adafruit_Unified_Sensor-1.0.2.zip -d ~/bin/arduino-1.8.8/libraries/  
->$ mv ~/bin/arduino-1.8.8/libraries/Adafruit_Unified_Sensor-1.0.2 ~/bin/arduino-1.8.8/libraries/Adafruit_Unified_Sensor  
+>$ wget http://downloads.arduino.cc/libraries/github.com/adafruit/Adafruit_Unified_Sensor-1.0.3.zip  
+>$ unzip Adafruit_Unified_Sensor-1.0.3.zip -d ~/bin/arduino-1.8.10/libraries/  
+>$ mv ~/bin/arduino-1.8.10/libraries/Adafruit_Unified_Sensor-1.0.3 ~/bin/arduino-1.8.10/libraries/Adafruit_Unified_Sensor  
 
 DHT sensor library  
 ---------------
 Download library from https://www.arduinolibraries.info/libraries/dht-sensor-library  
->$ wget http://downloads.arduino.cc/libraries/github.com/adafruit/DHT_sensor_library-1.3.4.zip  
->$ unzip DHT_sensor_library-1.3.4.zip -d ~/bin/arduino-1.8.8/libraries/  
->$ mv ~/bin/arduino-1.8.8/libraries/DHT_sensor_library-1.3.4 ~/bin/arduino-1.8.8/libraries/DHT_sensor_library  
+>$ wget http://downloads.arduino.cc/libraries/github.com/adafruit/DHT_sensor_library-1.3.7.zip  
+>$ unzip DHT_sensor_library-1.3.7.zip -d ~/bin/arduino-1.8.10/libraries/  
+>$ mv ~/bin/arduino-1.8.10/libraries/DHT_sensor_library-1.3.7 ~/bin/arduino-1.8.10/libraries/DHT_sensor_library  
 
 
 Programming the Arduino Mini Pro
