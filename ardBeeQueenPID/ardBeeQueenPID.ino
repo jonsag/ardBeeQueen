@@ -1,3 +1,4 @@
+// ardBeeQueenPID
 /*
   The LCD circuit:
                                GND            display pin 1
@@ -20,84 +21,92 @@
    back light cathode          GND	          display pin 16
 */
 
-// Include EEPROM library
+// include EEPROM library
 #include <EEPROM.h>
-int eeAddr = 0; // Address to store the set point temp
+int eeAddr = 0; // address to store the set point temp
 
-// Include the DHT library
+// include the DHT library
 #include <DHT.h>
-
-// Define DHT pin
-#define DHTPIN 2  // Declare Pin Number
-// Uncomment one of the below sensors
+// define DHT pin
+#define DHTPIN 2  // declare Pin Number
+// uncomment one of the below sensors
 //#define DHTTYPE DHT11   // DHT 11 used
 #define DHTTYPE DHT22   // DHT 22  (AM2302), AM2321
 //#define DHTTYPE DHT21   // DHT 21 (AM230)
-// Set up DHT sensor
-DHT dht(DHTPIN, DHTTYPE);  // Initialize DHT sensor
+// set up DHT sensor
+DHT dht(DHTPIN, DHTTYPE);  // initialize DHT sensor
 
-// Relay pins
-const int heatingRelay = 3;  // Relay heating
-const int coolingRelay = 4;  // Relay cooling
-int heatState = 0;
-int heatStateLast = 0;
+// relay pins
+const int heatingRelay = 3;  // relay heating
+const int coolingRelay = 4;  // relay cooling
+int heatState = 0; // current state of operation
+int heatStateLast = 0; // last state of operation
 
-// Rotary encoder
-// Encode pins
-const int encoderCLK = 5; // Rotary encoder CLK signal input pin
-const int encoderDT = 6; // Rotary encoder DT signal input pin
-const int encoderSW = 7; // Rotary encoders switch input pin, goes LOW when pressed
-// For storing encoder values
+// rotary encoder
+// encoder pins
+const int encoderCLK = 5; // rotary encoder CLK signal input pin
+const int encoderDT = 6; // rotary encoder DT signal input pin
+const int encoderSW = 7; // rotary encoders switch input pin, goes LOW when pressed
+// for storing encoder values
 int encoderCLKState = 0;
 int encoderDTState = 0;
 int encoderSWState = 0;
 int encoderDTStateLast = 0;
 int encoderSWStateLast = 0;
+// times
+unsigned long encoderSWTimeMillis = 0; // the last time encoder button was toggled
+int debounce = 200;   // the debounce time, increase if the output flickers
 
-long encoderSWTimeMillis = 0; // the last time encoder button was toggled
-long debounce = 200;   // the debounce time, increase if the output flickers
-
-// The LCD library
+// LCD
+// include the LCD library
 #include <LiquidCrystal.h>
-
-// Initialize the library with the numbers of the interface pins
+// initialize the library with the numbers of the interface pins
 LiquidCrystal lcd(13, 12, 11, 10, 9, 8);
-
-// Columns and rows of the LCD
+// columns and rows of the LCD
 int lcdColumns = 16;
 int lcdRows = 2;
 
 // Variables
-float hum = 0;
-float temp = 0;
+float hum = 0; // read humidity
+float temp = 0; // read temperature
 
-double dewPoint = 0;
-double dewPointFast = 0;
+// PID
+// include PID library by Brett Beauregard
+#include <PID_v1.h>
+// define Variables we'll be connecting to
+float setPointTemp = 34.5; // the goal temp, in degrees celsius
+float Output; // the PIDs output
+// specify the links and initial tuning parameters
+double Kp=2, Ki=5, Kd=1; // PID variables
+PID myPID(&temp, &Output, &setPointTemp, Kp, Ki, Kd, DIRECT);
+// PID limits
+int windowSize = 5000; // the time of the PID regulatory size(?)
+unsigned long windowStartTime; // stores millis
+
+double dewPoint = 0; // calculated dew point
+double dewPointFast = 0; // another calculated dew point
 float hic = 0;
 
-// For calculation of length of values
+// for calculation of length of values
 String valString = "";
 int valLength;
 
-// The goal temp, in degrees celsius
-float setPointTemp = 34.5;
-
-// Wait time between reads, in milliseconds
-unsigned long readMillis = 0; // stores millis
+// wait time between temp reads, in milliseconds
+unsigned long readMillis; // stores millis
 int waitTime = 2000; // millis to wait between reads
 
-// Text to print before temps
+// text to print before temps
 String setPointTempText = "SP:";
 String actualTempText = "A:";
 
-// Buffer to store float to string
+// buffer to store float to string
 char dtostrfbuffer[5];
 
 void setup(void) {
 
-  // Start LCD
+  // start LCD
   lcd.begin(lcdColumns, lcdRows);
-  // Print a message to the LCD
+  // print a message to the LCD
   lcd.setCursor(0, 0);
   lcd.print("ardBeeQueen");
   lcd.setCursor(0, 1);
@@ -108,13 +117,13 @@ void setup(void) {
   lcd.print("Starting serial ...");
   Serial.begin(9600);
 
-  Serial.println("ardBeeQueen");
-  Serial.println("20191008");
+  Serial.println("ardBeeQueenPID");
+  Serial.println("201910011");
   Serial.println("by Jon Sagebrand");
   Serial.println("jonsagebrand@gmail.com");
   Serial.println();
 
-  // Read set temp from eeprom
+  // read set temp from eeprom
   Serial.println("Reading last temp from eeprom ...");
   lcd.setCursor(0, 1);
   lcd.print("Reading last temp ...");
@@ -122,9 +131,9 @@ void setup(void) {
   EEPROM.get( eeAddr, f );
   Serial.println( f );
 
-  // Check if there is a value stored in eeprom
-  // If so, then use it as set point
-  // Else store the predefined value
+  // check if there is a value stored in eeprom
+  // if so, then use it as set point,
+  // else store the predefined value
   if ( isnan(f) ) {
     Serial.println("No value found in eeprom");
     Serial.print("Storing value: ");
@@ -138,26 +147,33 @@ void setup(void) {
     Serial.println();
   }
 
-  // Start DHT sensor
+  // start DHT sensor
   Serial.println("Starting DHT sensor ...");
   lcd.setCursor(0, 1);
   lcd.print("Starting sensor ...");
   dht.begin();  // start up dht sensors
 
-  // Define in- and outputs
+  // define in- and outputs
+  // relay pins
   Serial.println("Starting outputs  ...");
   lcd.setCursor(0, 1);
   lcd.print("Starting outputs ...");
   pinMode(heatingRelay, OUTPUT);
   pinMode(coolingRelay, OUTPUT);
-
-  // Define rotary encoder
+  // rotary encoder pins
   Serial.println("Starting inputs ...");
   lcd.setCursor(0, 1);
   lcd.print("Starting inputs ...");
   pinMode(encoderCLK, INPUT);
   pinMode(encoderDT, INPUT);
   pinMode(encoderSW, INPUT);
+
+  // start PID
+  Serial.println("Starting PID ...");
+  lcd.setCursor(0, 1);
+  lcd.print("Starting PID ...");
+  initiatePID();
+  windowStartTime = millis();
 
   lcd.clear();
 
@@ -174,7 +190,7 @@ void loop(void) {
   encoderDTState = digitalRead(encoderDT);
   encoderSWState = digitalRead(encoderSW);
 
-  // Check encoder if button is pressed
+  // check encoder if button is pressed
   if ( encoderSWState == 0 ) { // Button is pressed
     if ((encoderDTStateLast == 0) && (encoderDTState == 1)) {
       if (encoderCLKState == 0) {
@@ -192,7 +208,7 @@ void loop(void) {
 
   printSetPoint();
 
-  // Check if button is released
+  // check if button is released
   if ( encoderSWState != encoderSWStateLast ) {
     if ( encoderSWState == 0 ) {
       Serial.println("Button is down");
@@ -204,8 +220,10 @@ void loop(void) {
     }
     encoderSWStateLast = encoderSWState;
     Serial.println();
+    initiatePID(); // initiate PID with new value
   }
 
+  // read temperature
   if ( encoderSWState ) { // Only read values if button is UP
     if ( millis() - readMillis >= waitTime ) {
       Serial.println("Requesting humidity and temperature ...");
@@ -215,21 +233,36 @@ void loop(void) {
       // Read temperature as Celsius (the default)
       temp = dht.readTemperature();
 
-      // Check if any reads failed and exit early (to try again).
+      // check if any reads failed and exit early (to try again).
       if (isnan(hum) || isnan(temp)) {
         Serial.println(F("Failed to read from DHT sensor!"));
         return;
       }
-      printActualValues(); // Print measured values to serial and LCD
+      printActualValues(); // print measured values to serial and LCD
       readMillis = millis();
     }
   }
 
-  if ( temp < setPointTemp && encoderSWState ) { // If temp is below set point and button is up
+  // compute PID
+  myPID.Compute();
+
+  // turn the output pin on/off based on pid output
+  if (millis() - windowStartTime > WindowSize) { // time to shift the Relay Window
+	  windowStartTime += WindowSize;
+  }
+  if (Output < millis() - windowStartTime) {
+	  digitalWrite(RELAY_PIN, HIGH);
+  }
+  else {
+	  digitalWrite(RELAY_PIN, LOW);
+  }
+
+/*
+  if ( temp < setPointTemp && encoderSWState ) { // if temp is below set point and button is up
     digitalWrite(heatingRelay, 1);
     digitalWrite(coolingRelay, 0);
     heatState = 1; // heating
-  } else if ( temp > setPointTemp && encoderSWState ) { // If temp is above set point and button is up
+  } else if ( temp > setPointTemp && encoderSWState ) { // if temp is above set point and button is up
     digitalWrite(heatingRelay, 0);
     digitalWrite(coolingRelay, 1);
     heatState = 0; // cooling
@@ -238,12 +271,12 @@ void loop(void) {
     digitalWrite(coolingRelay, 0);
     heatState = 2; // at correct temp
   }
+   */
 
-  if ( heatState != heatStateLast ) { // If there has been a change in heating or cooling
+  if ( heatState != heatStateLast ) { // if there has been a change in heating or cooling
     printHeatState();
     heatStateLast = heatState;
   }
-
 }
 
 // dewPoint function NOAA
@@ -292,11 +325,11 @@ void printSetPoint() { // prints set point temp to LCD
 }
 
 void printActualValues() {
-  // Calculate dew points
+  // calculate dew points
   dewPoint = dewPointFunction(temp, hum);
   dewPointFast = dewPointFastFunction(temp, hum);
 
-  // Compute heat index in Celsius (isFahrenheit = false)
+  // compute heat index in Celsius (isFahrenheit = false)
   hic = dht.computeHeatIndex(temp, hum, false);
 
   Serial.print("Dew Point: ");
@@ -349,4 +382,15 @@ void printHeatState() {
     lcd.print("W");
   }
   Serial.println();
+}
+
+void initiatePID() {
+	Serial.println("Initializing PID ...");
+	Serial.println();
+
+	// tell the PID to range between 0 and the full window size
+	myPID.SetOutputLimits(0, windowSize);
+
+	// turn the PID on
+	myPID.SetMode(AUTOMATIC);
 }
