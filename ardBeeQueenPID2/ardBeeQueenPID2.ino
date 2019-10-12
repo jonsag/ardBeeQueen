@@ -1,4 +1,4 @@
-// ardBeeQueenPID
+// ardBeeQueenPID2
 /*
   The LCD circuit:
                                GND            display pin 1
@@ -21,6 +21,11 @@
    back light cathode          GND	          display pin 16
 */
 
+String programName = "ardBeeQueenPID2";
+String date = "201910011";
+String author = "Jon Sagebrand";
+String email = "jonsagebrand@gmail.com";
+
 // include EEPROM library
 #include <EEPROM.h>
 int eeAddr = 0; // address to store the set point temp
@@ -41,6 +46,7 @@ int waitTime = 2000; // millis to wait between reads
 
 // relay pins
 const int heatingRelay = 3;  // relay heating
+int heatingRelayState;
 const int coolingRelay = 4;  // relay cooling
 int heatState = 0; // current state of operation
 int heatStateLast = 0; // last state of operation
@@ -80,15 +86,14 @@ double temp = 0; // read temperature
 double setPointTemp = 34.5; // the goal temp, in degrees celsius
 double Output; // the PIDs output
 double gap; // the gap between setpoint and actual temp
-// specify the links and initial tuning parameters
-double aggKp=4, aggKi=0.2, aggKd=1; // aggressive PID parameters
-double consKp=1, consKi=0.05, consKd=0.25; // conservative PID paramaters
-PID myPID(&temp, &Output, &setPointTemp, consKp, consKi, consKd, DIRECT); // initiate PID with conservative parameters
-//double Kp=2, Ki=5, Kd=1; // PID variables
-//PID myPID(&temp, &Output, &setPointTemp, Kp, Ki, Kd, DIRECT);
+// specify tuning parameters
+double Kp = 5.0, Ki = 3.0, Kd = 3.0; // PID variables
+PID myPID(&temp, &Output, &setPointTemp, Kp, Ki, Kd, DIRECT);
 // PID limits
-int windowSize = 5000; // the time of the PID regulatory size(?)
-unsigned long windowStartTime; // stores millis
+unsigned long windowSize = 30000; // the time of the PID regulatory size(?)
+int PIDCalculated;
+unsigned long windowTime;
+unsigned long onTimeVal;
 
 double dewPoint = 0; // calculated dew point
 double dewPointFast = 0; // another calculated dew point
@@ -120,10 +125,12 @@ void setup(void) {
   lcd.print("Starting serial ...");
   Serial.begin(9600);
 
-  Serial.println("ardBeeQueenPID");
-  Serial.println("201910011");
-  Serial.println("by Jon Sagebrand");
-  Serial.println("jonsagebrand@gmail.com");
+  // print information
+  Serial.println(programName);
+  Serial.println(date);
+  Serial.print("by ");
+  Serial.print(author);
+  Serial.println(email);
   Serial.println();
 
   // read set temp from eeprom
@@ -175,9 +182,11 @@ void setup(void) {
   Serial.println("Starting PID ...");
   lcd.setCursor(0, 1);
   lcd.print("Starting PID ...");
-  myPID.SetOutputLimits(0, windowSize); // tell the PID to range between 0 and the full window size  
-  myPID.SetMode(AUTOMATIC); // turn the PID on
-  windowStartTime = millis();
+  myPID.SetOutputLimits(0, 1000); // 1000 steps in the control loop
+  myPID.SetSampleTime(1000); //default is 100 miliseconds
+  myPID.SetMode(MANUAL);// clears windup anc verifies PID calculations are correct based on sample time
+  delay(5000); // We need to prep the millis() timer below to have 5 seconds on it before PID starts calculating and turns on the heater
+  myPID.SetMode(AUTOMATIC); // // start the PID ready for first calculation
 
   lcd.clear();
 
@@ -189,6 +198,9 @@ void setup(void) {
 }
 void loop(void) {
 
+/* *************************************************
+ * Rotary encoder
+ ***************************************************/
   // read rotary encoder
   encoderCLKState = digitalRead(encoderCLK);
   encoderDTState = digitalRead(encoderDT);
@@ -226,6 +238,9 @@ void loop(void) {
     Serial.println();
   }
 
+  /***********************************************************
+   * Temperature
+   ***********************************************************/
   // read temperature
   if ( encoderSWState ) { // Only read values if button is UP
     if ( millis() - readMillis >= waitTime ) {
@@ -243,59 +258,22 @@ void loop(void) {
       }
       printActualValues(); // print measured values to serial and LCD
       readMillis = millis();
-
-      gap = abs(setPointTemp - temp); // distance away from setpoint
-      Serial.print("Gap is ");
-      Serial.print(gap);
-      if (gap < 2) { // we're close to setpoint, use conservative tuning parameters
-        Serial.println(" Using conservative tuning");
-        myPID.SetTunings(consKp, consKi, consKd);
-      }
-      else { // we're far from setpoint, use aggressive tuning parameters
-        Serial.println(" Using aggressive tuning");
-        myPID.SetTunings(aggKp, aggKi, aggKd);
-      }
-      // compute PID
-      myPID.Compute();
-      Serial.print("PID output: ");
-      Serial.println(Output);
-      Serial.print("Heating for ");
-      Serial.print((windowSize - Output) / 1000);
-      Serial.print(" of ");
-      Serial.print(windowSize / 1000);
-      Serial.println(" seconds");
-      Serial.println();
     }
   }
 
-  // turn the output pin on/off based on pid output
-  if (millis() - windowStartTime > windowSize) { // time to shift the Relay Window
-	  windowStartTime += windowSize;
-  }
-  if (Output < millis() - windowStartTime) {
-	  digitalWrite(heatingRelay, HIGH);
-    heatState = 1; // heating
-  }
-  else {
-	  digitalWrite(heatingRelay, LOW);
-    heatState = 0; // cooling
-  }
-
-/*
-  if ( temp < setPointTemp && encoderSWState ) { // if temp is below set point and button is up
-    digitalWrite(heatingRelay, 1);
-    digitalWrite(coolingRelay, 0);
-    heatState = 1; // heating
-  } else if ( temp > setPointTemp && encoderSWState ) { // if temp is above set point and button is up
-    digitalWrite(heatingRelay, 0);
-    digitalWrite(coolingRelay, 1);
-    heatState = 0; // cooling
-  } else {
-    digitalWrite(heatingRelay, 0);
-    digitalWrite(coolingRelay, 0);
-    heatState = 2; // at correct temp
-  }
-   */
+  /**************************************************************
+   * PID
+   **************************************************************/
+  PIDCalculated = myPID.Compute(); // this only calculates once every second and returns True when it does
+  writeToHeatingRelay(Output);
+    if (PIDCalculated) {
+      Serial.print(temp);
+      Serial.print("°C, PID output: ");
+      Serial.print(Output / 10);
+      Serial.print("% Heating relay is: ");
+      Serial.println((heatingRelayState) ? "On" : "OFF");
+      Serial.println();
+    }
 
   if ( heatState != heatStateLast ) { // if there has been a change in heating or cooling
     printHeatState();
@@ -356,14 +334,14 @@ void printActualValues() {
   // compute heat index in Celsius (isFahrenheit = false)
   hic = dht.computeHeatIndex(temp, hum, false);
 
-  Serial.print("Dew Point: ");
+  Serial.print("    Dew Point: ");
   Serial.println(dewPoint);
-  Serial.print("Dew Point Fast: ");
+  Serial.print("    Dew Point Fast: ");
   Serial.println(dewPointFast);
-  Serial.print("Heat Index: ");
+  Serial.print("    Heat Index: ");
   Serial.println(hic);
 
-  Serial.print("Temperature: ");
+  Serial.print("    Temperature: ");
   Serial.println(temp);
 
   lcd.setCursor(2 + valLength, 0);
@@ -378,8 +356,9 @@ void printActualValues() {
   lcd.setCursor(3 + valLength, 0);
   lcd.print(" ");
 
-  Serial.print("Humidity: ");
+  Serial.print("    Humidity: ");
   Serial.println(hum);
+  
   lcd.setCursor(0, 1);
   lcd.print("Humidity:");
   lcd.setCursor(9, 1);
@@ -393,17 +372,44 @@ void printActualValues() {
 
 void printHeatState() {
   if ( heatState == 0 ) {
-    Serial.println("Cooling...");
+    Serial.println("    Cooling...");
     lcd.setCursor(15, 1);
     lcd.print("C");
   } else if ( heatState == 1 ) {
-    Serial.println("Heating...");
+    Serial.println("    Heating...");
     lcd.setCursor(15, 1);
     lcd.print("H");
   } else {
-    Serial.println("At goal temp or waiting for button to come up");
+    Serial.println("    At goal temp or waiting for button to come up");
     lcd.setCursor(15, 1);
     lcd.print("W");
   }
   Serial.println();
+}
+
+void writeToHeatingRelay(double value) {
+  windowTime = millis() % windowSize; // convert millis into a millisecond counter that resets at windowSize
+  onTimeVal = (unsigned long)(value * (double)windowSize / 1000.0); // convert windowSize into seconds and multiply it by output which ranges from 0 to 1000
+
+  if (onTimeVal > windowTime) {
+    heatingRelayState = HIGH;
+    heatState = 1;
+
+  } else {
+    heatingRelayState = LOW;
+    heatState = 0;
+  }
+
+  digitalWrite(heatingRelay, heatingRelayState); // set the output
+
+  /*
+  // short cycle prevention (Blink without delay)
+  static unsigned long ShortCycleTimer;
+  if ((millis() - ShortCycleTimer) >= (5000)) {
+    if ((digitalRead(heatingRelay) == LOW) && (heatingRelayState = HIGH)) {
+    	ShortCycleTimer = millis(); // this sets a blink without delay timer that prevents the following line from triggeringfor 5 seconds after it changes the output to HIGH
+    }
+    digitalWrite(heatingRelay, heatingRelayState); // set the output
+  }
+  */
 }
