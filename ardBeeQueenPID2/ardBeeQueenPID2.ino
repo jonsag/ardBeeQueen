@@ -191,6 +191,7 @@ void setup(void) {
   lcd.clear();
 
   printSetPoint();
+  printHeatState();
 
   Serial.println("Program starts ...");
   Serial.println();
@@ -267,10 +268,13 @@ void loop(void) {
   PIDCalculated = myPID.Compute(); // this only calculates once every second and returns True when it does
   writeToHeatingRelay(Output);
     if (PIDCalculated) {
+      Serial.print("SP: ");
+      Serial.print(setPointTemp);
+      Serial.print("°C, PV: ");
       Serial.print(temp);
       Serial.print("°C, PID output: ");
       Serial.print(Output / 10);
-      Serial.print("% Heating relay is: ");
+      Serial.print("%, Heating relay is: ");
       Serial.println((heatingRelayState) ? "On" : "OFF");
       Serial.println();
     }
@@ -372,11 +376,11 @@ void printActualValues() {
 
 void printHeatState() {
   if ( heatState == 0 ) {
-    Serial.println("    Cooling...");
+    Serial.println("Cooling...");
     lcd.setCursor(15, 1);
     lcd.print("C");
   } else if ( heatState == 1 ) {
-    Serial.println("    Heating...");
+    Serial.println("Heating...");
     lcd.setCursor(15, 1);
     lcd.print("H");
   } else {
@@ -401,7 +405,6 @@ void writeToHeatingRelay(double value) {
   }
 
   digitalWrite(heatingRelay, heatingRelayState); // set the output
-
   /*
   // short cycle prevention (Blink without delay)
   static unsigned long ShortCycleTimer;
