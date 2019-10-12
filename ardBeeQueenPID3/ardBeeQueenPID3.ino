@@ -221,42 +221,40 @@ void loop(void) {
   encoderDTState = digitalRead(encoderDT);
   encoderSWState = digitalRead(encoderSW);
 
-  // check encoder if button is pressed
   if ( encoderSWState == 0 ) { // button is pressed
-    if ((encoderDTStateLast == 0) && (encoderDTState == 1)) {
-      if (encoderCLKState == 0) {
+    if ((encoderDTStateLast == 0) && (encoderDTState == 1)) { // encoder has been turned
+      if (encoderCLKState == 0) { // encoder is turned clockwise
         setPointTemp += 0.1;
-        if (!plot) Serial.print("Counting up set point. New value: ");
-      } else {
+        if (!plot) Serial.print("Increasing set point. New value: ");
+      } else { // encoder is turned anti clockwise
         setPointTemp -= 0.1;
-        if (!plot) Serial.print("Counting down set point. New value: ");
+        if (!plot) Serial.print("Decreasing set point. New value: ");
       }
       if (!plot) Serial.println(setPointTemp);
       printSetPoint(); // prints the new set point temp to LCD
     }
-    encoderDTStateLast = encoderDTState;
+    encoderDTStateLast = encoderDTState; // store last value
   }
 
-  // check if button is released
-  if ( encoderSWState != encoderSWStateLast ) {
-    if ( encoderSWState == 0 ) {
+  if ( encoderSWState != encoderSWStateLast ) { // button has toggled
+    if ( encoderSWState == 0 ) { // button was pressed
       if (!plot) Serial.println("Button is down");
-    } else {
+    } else { // button was released
       if (!plot) Serial.println("Button is up");
-      if (!plot) Serial.print("Storing value new value to eeprom: ");
-      if (!plot) Serial.println(setPointTemp);
-      EEPROM.put(eeAddr, setPointTemp);
+      if (!plot) Serial.print("Storing new value to eeprom: ");
+      if (!plot) Serial.print(setPointTemp);
+      if (!plot) Serial.println(" ...");
+      EEPROM.put(eeAddr, setPointTemp); // write new set point to eeprom
     }
-    encoderSWStateLast = encoderSWState;
+    encoderSWStateLast = encoderSWState; // store last value of encoder switch
     if (!plot) Serial.println();
   }
 
   /*******************************
    * Temperature
    ********************************/
-  // read temperature
   if ( encoderSWState ) { // only read values if button is UP
-    if ( millis() - readMillis >= waitTime ) {
+    if ( millis() - readMillis >= waitTime ) { // check if it is time to read sensor
       if (!plot) Serial.println("Requesting humidity and temperature ...");
       hum = dht.readHumidity();
       temp = dht.readTemperature(); // read temperature as celsius
@@ -277,7 +275,7 @@ void loop(void) {
         }
       }
       printActualValues(); // print measured values to serial and LCD
-      readMillis = millis();
+      readMillis = millis(); // this is the time when sensor was last read
     }
   }
 
@@ -303,7 +301,7 @@ void loop(void) {
     printPIDOutput(); // print PID output to LCD
   }
 
-  if ( heatState != heatStateLast ) { // if there has been a change in heating or cooling
+  if ( heatState != heatStateLast ) { // there has been a change in heating or cooling
     printHeatState(); // print heat state to LCD and serial
     heatStateLast = heatState;
   }
@@ -334,7 +332,7 @@ double dewPointFastFunction(double celsius, double humidity) {
   return Td;
 }
 
-int intToStringToLength(int val) { // return how many numbers in integer
+int intToStringToLength(int val) { // returns how many numbers in integer
   valString = String(val);
   valLength = valString.length();
   return valLength;
