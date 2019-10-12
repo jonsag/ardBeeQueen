@@ -109,7 +109,7 @@ PID myPID(&temp, &Output, &setPointTemp, Kp, Ki, Kd, DIRECT);
 unsigned long windowSize = 30000; // the time of the PID regulatory size(?)
 int PIDCalculated; // for checking if PID has been calculated
 unsigned long windowTime;
-unsigned long onTimeVal;
+unsigned long onTimeVal; // on time value
 
 /*******************************
  * Text output setup
@@ -293,7 +293,11 @@ void loop(void) {
     if (!plot) Serial.print(temp);
     if (!plot) Serial.print("°C, PID output: ");
     if (!plot) Serial.print(Output / 10);
-    if (!plot) Serial.print("%, Heating relay is: ");
+    if (!plot) Serial.print("%, WT: ");
+    if (!plot) Serial.print(windowTime);
+    if (!plot) Serial.print(", OT: ");
+    if (!plot) Serial.println(onTimeVal);
+    if (!plot) Serial.print(", Heating relay is: ");
     if (!plot) Serial.println((heatingRelayState) ? "On" : "OFF");
     if (!plot) Serial.println();
     printPIDOutput(); // print PID output to LCD
