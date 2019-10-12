@@ -295,7 +295,7 @@ void loop(void) {
     if (!plot) Serial.print(Output / 10);
     if (!plot) Serial.print("%, WT: ");
     if (!plot) Serial.print(windowTime);
-    if (!plot) Serial.print(", OT: ");
+    if (!plot) Serial.print(", OTV: ");
     if (!plot) Serial.println(onTimeVal);
     if (!plot) Serial.print(", Heating relay is: ");
     if (!plot) Serial.println((heatingRelayState) ? "On" : "OFF");
