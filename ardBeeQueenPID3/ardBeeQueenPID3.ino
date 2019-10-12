@@ -30,19 +30,19 @@ String email = "jonsagebrand@gmail.com";
 bool plot = 1;
 
 /*******************************
-   EEPROM setup
+ * EEPROM setup
  *******************************/
 // include EEPROM library
 #include <EEPROM.h>
 int eeAddr = 0; // address to store the set point temp
 
 /*******************************
-   DHT setup
+ * DHT setup
  *******************************/
 // include the DHT library
 #include <DHT.h>
 // define DHT pin
-#define DHTPIN 2  // declare Pin Number
+#define DHTPIN 2  // declare pin number
 // uncomment one of the below sensors
 //#define DHTTYPE DHT11   // DHT 11 used
 #define DHTTYPE DHT22   // DHT 22  (AM2302), AM2321
@@ -60,7 +60,7 @@ double dewPointFast = 0; // another calculated dew point
 float hic = 0;
 
 /*******************************
-   Input/Output pins setup
+ * Input/Output pins setup
  *******************************/
 // relay pins
 const int heatingRelay = 3;  // relay heating
@@ -69,8 +69,7 @@ const int coolingRelay = 4;  // relay cooling
 int heatState = 0; // current state of operation
 int heatStateLast = 0; // last state of operation
 
-// rotary encoder
-// encoder pins
+// rotary encoder pins
 const int encoderCLK = 5; // rotary encoder CLK signal input pin
 const int encoderDT = 6; // rotary encoder DT signal input pin
 const int encoderSW = 7; // rotary encoders switch input pin, goes LOW when pressed
@@ -80,12 +79,12 @@ int encoderDTState = 0;
 int encoderSWState = 0;
 int encoderDTStateLast = 0;
 int encoderSWStateLast = 0;
-// times
+// times for debounce
 unsigned long encoderSWTimeMillis = 0; // the last time encoder button was toggled
 int debounce = 200;   // the debounce time, increase if the output flickers
 
 /*******************************
-   LCD setup
+ * LCD setup
  *******************************/
 // include the LCD library
 #include <LiquidCrystal.h>
@@ -100,21 +99,20 @@ int lcdRows = 2;
  *******************************/
 // include PID library by Brett Beauregard
 #include <PID_v1.h>
-// define Variables we'll be connecting to
+// define variables
 double setPointTemp = 34.5; // the goal temp, in degrees celsius
 double Output; // the PIDs output
-double gap; // the gap between setpoint and actual temp
 // specify tuning parameters
 double Kp = 5.0, Ki = 3.0, Kd = 3.0; // PID variables
 PID myPID(&temp, &Output, &setPointTemp, Kp, Ki, Kd, DIRECT);
 // PID limits
 unsigned long windowSize = 30000; // the time of the PID regulatory size(?)
-int PIDCalculated;
+int PIDCalculated; // for checking if PID has been calculated
 unsigned long windowTime;
 unsigned long onTimeVal;
 
 /*******************************
-   Text output setup
+ * Text output setup
  *******************************/
 // for calculation of length of values
 String valString = "";
@@ -202,13 +200,13 @@ void setup(void) {
   myPID.SetOutputLimits(0, 1000); // 1000 steps in the control loop
   myPID.SetSampleTime(1000); //default is 100 miliseconds
   myPID.SetMode(MANUAL);// clears windup anc verifies PID calculations are correct based on sample time
-  delay(5000); // We need to prep the millis() timer below to have 5 seconds on it before PID starts calculating and turns on the heater
+  delay(5000); // prep the millis() timer below to have 5 seconds on it before PID starts calculating and turns on the heater
   myPID.SetMode(AUTOMATIC); // // start the PID ready for first calculation
 
   lcd.clear();
 
-  printSetPoint();
-  printHeatState();
+  printSetPoint(); // print set point temp to LCD
+  printHeatState(); // print heat state to LCD
 
   if (!plot) Serial.println("Program starts ...");
   if (!plot) Serial.println();
@@ -216,7 +214,7 @@ void setup(void) {
 
 void loop(void) {
   /*******************************
-     Rotary Encoder
+   * Rotary Encoder
    *******************************/
   // read rotary encoder
   encoderCLKState = digitalRead(encoderCLK);
@@ -224,7 +222,7 @@ void loop(void) {
   encoderSWState = digitalRead(encoderSW);
 
   // check encoder if button is pressed
-  if ( encoderSWState == 0 ) { // Button is pressed
+  if ( encoderSWState == 0 ) { // button is pressed
     if ((encoderDTStateLast == 0) && (encoderDTState == 1)) {
       if (encoderCLKState == 0) {
         setPointTemp += 0.1;
@@ -234,12 +232,10 @@ void loop(void) {
         if (!plot) Serial.print("Counting down set point. New value: ");
       }
       if (!plot) Serial.println(setPointTemp);
-      printSetPoint(); // Prints the new set point to LCD
+      printSetPoint(); // prints the new set point temp to LCD
     }
     encoderDTStateLast = encoderDTState;
   }
-
-  printSetPoint();
 
   // check if button is released
   if ( encoderSWState != encoderSWStateLast ) {
@@ -275,7 +271,7 @@ void loop(void) {
           Serial.print(",");
           Serial.print(temp);
           Serial.print(",");
-          Serial.print(10 + Output / 100); // prints output 10-20
+          Serial.print(10 + Output / 100); // prints PID output 10-20
           Serial.print(",");
           Serial.println(heatState * 10); // 0 = cooling off, 10 = heating, 20 = waiting
         }
@@ -304,7 +300,7 @@ void loop(void) {
   }
 
   if ( heatState != heatStateLast ) { // if there has been a change in heating or cooling
-    printHeatState();
+    printHeatState(); // print heat state to LCD
     heatStateLast = heatState;
   }
 }
@@ -354,7 +350,7 @@ void printSetPoint() { // prints set point temp to LCD
   lcd.print(" ");
 }
 
-void printActualValues() {
+void printActualValues() { // prints measured values to serial and LCD
   // calculate dew points
   dewPoint = dewPointFunction(temp, hum);
   dewPointFast = dewPointFastFunction(temp, hum);
@@ -407,7 +403,7 @@ void printPIDOutput() {
   lcd.print("%  ");
 }
 
-void printHeatState() {
+void printHeatState() { // prints heat state (ie C, H or W) to LCD
   if ( heatState == 0 ) {
     if (!plot) Serial.println("Cooling...");
     lcd.setCursor(15, 1);
