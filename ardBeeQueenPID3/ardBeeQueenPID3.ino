@@ -95,7 +95,7 @@ int lcdColumns = 16;
 int lcdRows = 2;
 
 /*******************************
-   PID setup
+ * PID setup
  *******************************/
 // include PID library by Brett Beauregard
 #include <PID_v1.h>
@@ -206,7 +206,7 @@ void setup(void) {
   lcd.clear();
 
   printSetPoint(); // print set point temp to LCD
-  printHeatState(); // print heat state to LCD
+  printHeatState(); // print heat state to LCD and serial
 
   if (!plot) Serial.println("Program starts ...");
   if (!plot) Serial.println();
@@ -252,7 +252,7 @@ void loop(void) {
   }
 
   /*******************************
-     Temperature
+   * Temperature
    ********************************/
   // read temperature
   if ( encoderSWState ) { // only read values if button is UP
@@ -282,7 +282,7 @@ void loop(void) {
   }
 
   /*******************************
-     PID
+   * PID
    *******************************/
   PIDCalculated = myPID.Compute(); // this only calculates once every second and returns True when it does
   writeToHeatingRelay(Output);
@@ -296,11 +296,11 @@ void loop(void) {
     if (!plot) Serial.print("%, Heating relay is: ");
     if (!plot) Serial.println((heatingRelayState) ? "On" : "OFF");
     if (!plot) Serial.println();
-    printPIDOutput();
+    printPIDOutput(); // print PID output to LCD
   }
 
   if ( heatState != heatStateLast ) { // if there has been a change in heating or cooling
-    printHeatState(); // print heat state to LCD
+    printHeatState(); // print heat state to LCD and serial
     heatStateLast = heatState;
   }
 }
@@ -394,7 +394,7 @@ void printActualValues() { // prints measured values to serial and LCD
   if (!plot) Serial.println();
 }
 
-void printPIDOutput() {
+void printPIDOutput() { // prints PID output to LCD
   lcd.setCursor(9, 1);
   int output = round(Output / 10);
   lcd.print(output);
@@ -403,7 +403,7 @@ void printPIDOutput() {
   lcd.print("%  ");
 }
 
-void printHeatState() { // prints heat state (ie C, H or W) to LCD
+void printHeatState() { // prints heat state (ie C, H or W) to LCD and serial
   if ( heatState == 0 ) {
     if (!plot) Serial.println("Cooling...");
     lcd.setCursor(15, 1);
