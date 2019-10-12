@@ -116,7 +116,7 @@ void setup(void) {
   lcd.begin(lcdColumns, lcdRows);
   // print a message to the LCD
   lcd.setCursor(0, 0);
-  lcd.print("ardBeeQueen");
+  lcd.print(programName);
   lcd.setCursor(0, 1);
   lcd.print("Booting ...");
 
@@ -277,6 +277,7 @@ void loop(void) {
       Serial.print("%, Heating relay is: ");
       Serial.println((heatingRelayState) ? "On" : "OFF");
       Serial.println();
+      printPIDOutput();
     }
 
   if ( heatState != heatStateLast ) { // if there has been a change in heating or cooling
@@ -364,14 +365,23 @@ void printActualValues() {
   Serial.println(hum);
   
   lcd.setCursor(0, 1);
-  lcd.print("Humidity:");
-  lcd.setCursor(9, 1);
+  lcd.print("Hum:");
+  lcd.setCursor(4, 1);
   lcd.print(hum, 0);
   valLength = intToStringToLength(hum);
-  lcd.setCursor(9 + valLength, 1);
+  lcd.setCursor(4 + valLength, 1);
   lcd.print("%  ");
 
   Serial.println();
+}
+
+void printPIDOutput() {
+	lcd.setCursor(10,1);
+  int output = round(Output / 10);
+	lcd.print(output);
+  valLength = intToStringToLength(output);
+  lcd.setCursor(10 + valLength, 1);
+  lcd.print("%  ");
 }
 
 void printHeatState() {
@@ -384,7 +394,7 @@ void printHeatState() {
     lcd.setCursor(15, 1);
     lcd.print("H");
   } else {
-    Serial.println("    At goal temp or waiting for button to come up");
+    Serial.println("At goal temp or waiting for button to come up");
     lcd.setCursor(15, 1);
     lcd.print("W");
   }
