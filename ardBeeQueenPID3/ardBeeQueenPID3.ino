@@ -291,7 +291,7 @@ void loop(void) {
     if (!plot) Serial.print(setPointTemp);
     if (!plot) Serial.print("°C, PV: ");
     if (!plot) Serial.print(temp);
-    if (!plot) Serial.print("°C, PID output: ");
+    if (!plot) Serial.print("°C, PIDout: ");
     if (!plot) Serial.print(Output / 10);
     if (!plot) Serial.print("%, WT: ");
     if (!plot) Serial.print(windowTime);
