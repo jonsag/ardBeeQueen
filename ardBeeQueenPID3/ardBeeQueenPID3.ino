@@ -30,14 +30,14 @@ String email = "jonsagebrand@gmail.com";
 bool plot = 1;
 
 /*******************************
- * EEPROM setup
+   EEPROM setup
  *******************************/
 // include EEPROM library
 #include <EEPROM.h>
 int eeAddr = 0; // address to store the set point temp
 
 /*******************************
- * DHT setup
+   DHT setup
  *******************************/
 // include the DHT library
 #include <DHT.h>
@@ -60,7 +60,7 @@ double dewPointFast = 0; // another calculated dew point
 float hic = 0;
 
 /*******************************
- * Input/Output pins setup
+   Input/Output pins setup
  *******************************/
 // relay pins
 const int heatingRelay = 3;  // relay heating
@@ -85,7 +85,7 @@ unsigned long encoderSWTimeMillis = 0; // the last time encoder button was toggl
 int debounce = 200;   // the debounce time, increase if the output flickers
 
 /*******************************
- * LCD setup
+   LCD setup
  *******************************/
 // include the LCD library
 #include <LiquidCrystal.h>
@@ -96,7 +96,7 @@ int lcdColumns = 16;
 int lcdRows = 2;
 
 /*******************************
- * PID setup
+   PID setup
  *******************************/
 // include PID library by Brett Beauregard
 #include <PID_v1.h>
@@ -114,7 +114,7 @@ unsigned long windowTime;
 unsigned long onTimeVal;
 
 /*******************************
- * Text output setup
+   Text output setup
  *******************************/
 // for calculation of length of values
 String valString = "";
@@ -216,7 +216,7 @@ void setup(void) {
 
 void loop(void) {
   /*******************************
-   * Rotary Encoder
+     Rotary Encoder
    *******************************/
   // read rotary encoder
   encoderCLKState = digitalRead(encoderCLK);
@@ -256,7 +256,7 @@ void loop(void) {
   }
 
   /*******************************
-   * Temperature
+     Temperature
    ********************************/
   // read temperature
   if ( encoderSWState ) { // only read values if button is UP
@@ -270,9 +270,15 @@ void loop(void) {
         return;
       }
       else {
-    	  Serial.println(setPointTemp);
-    	  Serial.println();
-    	  Serial.println(temp);
+        if (plot) {
+          Serial.print(setPointTemp);
+          Serial.print(",");
+          Serial.print(temp);
+          Serial.print(",");
+          Serial.print(10 + Output / 100); // prints output 10-20
+          Serial.print(",");
+          Serial.println(heatState * 10); // 0 = cooling off, 10 = heating, 20 = waiting
+        }
       }
       printActualValues(); // print measured values to serial and LCD
       readMillis = millis();
@@ -280,22 +286,22 @@ void loop(void) {
   }
 
   /*******************************
-   * PID
+     PID
    *******************************/
   PIDCalculated = myPID.Compute(); // this only calculates once every second and returns True when it does
   writeToHeatingRelay(Output);
-    if (PIDCalculated) {
-      if (!plot) Serial.print("SP: ");
-      if (!plot) Serial.print(setPointTemp);
-      if (!plot) Serial.print("°C, PV: ");
-      if (!plot) Serial.print(temp);
-      if (!plot) Serial.print("°C, PID output: ");
-      if (!plot) Serial.print(Output / 10);
-      if (!plot) Serial.print("%, Heating relay is: ");
-      if (!plot) Serial.println((heatingRelayState) ? "On" : "OFF");
-      if (!plot) Serial.println();
-      printPIDOutput();
-    }
+  if (PIDCalculated) {
+    if (!plot) Serial.print("SP: ");
+    if (!plot) Serial.print(setPointTemp);
+    if (!plot) Serial.print("°C, PV: ");
+    if (!plot) Serial.print(temp);
+    if (!plot) Serial.print("°C, PID output: ");
+    if (!plot) Serial.print(Output / 10);
+    if (!plot) Serial.print("%, Heating relay is: ");
+    if (!plot) Serial.println((heatingRelayState) ? "On" : "OFF");
+    if (!plot) Serial.println();
+    printPIDOutput();
+  }
 
   if ( heatState != heatStateLast ) { // if there has been a change in heating or cooling
     printHeatState();
@@ -380,7 +386,7 @@ void printActualValues() {
 
   if (!plot) Serial.print("    Humidity: ");
   if (!plot) Serial.println(hum);
-  
+
   lcd.setCursor(0, 1);
   lcd.print("Hum:");
   lcd.setCursor(4, 1);
@@ -393,11 +399,11 @@ void printActualValues() {
 }
 
 void printPIDOutput() {
-	lcd.setCursor(10,1);
+  lcd.setCursor(9, 1);
   int output = round(Output / 10);
-	lcd.print(output);
+  lcd.print(output);
   valLength = intToStringToLength(output);
-  lcd.setCursor(10 + valLength, 1);
+  lcd.setCursor(9 + valLength, 1);
   lcd.print("%  ");
 }
 
@@ -433,13 +439,13 @@ void writeToHeatingRelay(double value) {
 
   digitalWrite(heatingRelay, heatingRelayState); // set the output
   /*
-  // short cycle prevention (Blink without delay)
-  static unsigned long ShortCycleTimer;
-  if ((millis() - ShortCycleTimer) >= (5000)) {
+    // short cycle prevention (Blink without delay)
+    static unsigned long ShortCycleTimer;
+    if ((millis() - ShortCycleTimer) >= (5000)) {
     if ((digitalRead(heatingRelay) == LOW) && (heatingRelayState = HIGH)) {
     	ShortCycleTimer = millis(); // this sets a blink without delay timer that prevents the following line from triggeringfor 5 seconds after it changes the output to HIGH
     }
     digitalWrite(heatingRelay, heatingRelayState); // set the output
-  }
+    }
   */
 }
