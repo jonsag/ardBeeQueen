@@ -297,7 +297,7 @@ void loop(void) {
     if (!plot) Serial.print(windowTime);
     if (!plot) Serial.print(", OTV: ");
     if (!plot) Serial.println(onTimeVal);
-    if (!plot) Serial.print(", Heating relay is: ");
+    if (!plot) Serial.print(", HRS: ");
     if (!plot) Serial.println((heatingRelayState) ? "On" : "OFF");
     if (!plot) Serial.println();
     printPIDOutput(); // print PID output to LCD
