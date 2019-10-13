@@ -231,7 +231,6 @@ void loop(void) {
         if (!plot) Serial.print("Decreasing set point. New value: ");
       }
       if (!plot) Serial.println(setPointTemp);
-      printSetPoint(); // prints the new set point temp to LCD
     }
     encoderDTStateLast = encoderDTState; // store last value
   }
@@ -249,6 +248,8 @@ void loop(void) {
     encoderSWStateLast = encoderSWState; // store last value of encoder switch
     if (!plot) Serial.println();
   }
+
+  printSetPoint(); // print the new set point temp to LCD
 
   /*******************************
    * Temperature
@@ -345,7 +346,7 @@ void printSetPoint() { // prints set point temp to LCD
   lcd.setCursor(valLength, 0);
   lcd.print(setPointTemp, 1); // prints set point
   dtostrf(setPointTemp, 1, 1, dtostrfbuffer);
-  valLength = valLength + strlen(dtostrfbuffer); // number if charaters before digits + number of digits
+  valLength = valLength + strlen(dtostrfbuffer); // number of characters before digits + number of digits
   lcd.setCursor(valLength, 0);
   lcd.print((char)223); // prints degree sign
   lcd.setCursor(1 + valLength, 0);
