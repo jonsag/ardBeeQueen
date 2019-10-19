@@ -31,21 +31,23 @@ DHT dht(DHTPIN, DHTTYPE);  // initialize DHT sensor
 unsigned long readMillis; // stores millis
 int waitTime = 2000; // millis to wait between reads
 // variables
-float hum = 0; // read humidity
+double hum = 0; // read humidity
 double temp = 0; // read temperature
 double dewPoint = 0; // calculated dew point
 double dewPointFast = 0; // another calculated dew point
-float hic = 0;
+double hic = 0;
 
 /*******************************
    Input/Output pins setup
  *******************************/
-// relay pins
-const int heatingRelay = 3;  // relay heating
-int heatingRelayState;
+// heating relay
+const int heatRelay = 3;  // relay heating
+int heatRelayState;
 int heatState = 0; // current state of operation
 int heatStateLast = 0; // last state of operation
+// fan relay
 const int fanRelay = 4;  // relay cooling
+int fanRelayState;
 int fanState = 0; // current state of operation
 int fanStateLast = 0; // last state of operation
 
@@ -102,7 +104,7 @@ int lcdRows = 2;
 double setPointTemp = 34.5; // the goal temp, in degrees celsius
 double Output; // the PIDs output
 // specify tuning parameters
-double Kp = 0.2, Ki = 100.0, Kd = 5.0; // PID variables
+double Kp = 0.1, Ki = 100.0, Kd = 25.0; // PID variables
 PID myPID(&temp, &Output, &setPointTemp, Kp, Ki, Kd, DIRECT);
 // PID limits
 unsigned long windowSize = 30000; // the time which the PID distributes between ON and OFF
@@ -120,6 +122,13 @@ int valLength;
 // text to print before temps
 String setPointTempText = "SP:";
 String actualTempText = "A:";
+String humidityText = "Hum:";
+
+// LCD text offsets
+const int setPointYOffset = 0;
+const int actualTempYOffset = 9;
+const int humidityYOffset = 0;
+const int PIDYOffset = 9;
 
 // buffer to store float to string
 char dtostrfbuffer[5];
@@ -182,7 +191,7 @@ void setup(void) {
   if (!plot) Serial.println("Starting outputs  ...");
   lcd.setCursor(0, 1);
   lcd.print("Starting outputs ...");
-  pinMode(heatingRelay, OUTPUT);
+  pinMode(heatRelay, OUTPUT);
   pinMode(fanRelay, OUTPUT);
   // rotary encoder pins
   if (!plot) Serial.println("Starting inputs ...");
@@ -215,8 +224,7 @@ void loop(void) {
   /*******************************
      Rotary Encoder
    *******************************/
-  // read rotary encoder
-  encoderCLKState = digitalRead(encoderCLK);
+  encoderCLKState = digitalRead(encoderCLK); // read rotary encoder
   encoderDTState = digitalRead(encoderDT);
   encoderSWState = digitalRead(encoderSW);
 
@@ -231,7 +239,7 @@ void loop(void) {
       }
       if (!plot) Serial.println(setPointTemp);
     }
-    encoderDTStateLast = encoderDTState; // store last value
+    encoderDTStateLast = encoderDTState; // store last value of encoder
   }
 
   if ( encoderSWState != encoderSWStateLast ) { // button has toggled
@@ -253,10 +261,10 @@ void loop(void) {
   /*******************************
      Temperature
    ********************************/
-  if ( encoderSWState ) { // only read values if button is UP
+  if ( encoderSWState ) { // only read values if encoder button is UP
     if ( millis() - readMillis >= waitTime ) { // check if it is time to read sensor
       if (!plot) Serial.println("Requesting humidity and temperature ...");
-      hum = dht.readHumidity();
+      hum = dht.readHumidity(); // read humidity
       temp = dht.readTemperature(); // read temperature as celsius
 
       if (isnan(hum) || isnan(temp)) { // check if any reads failed
@@ -265,9 +273,11 @@ void loop(void) {
       }
       else {
         if (plot) {
-          Serial.print(setPointTemp);
+          Serial.print(setPointTemp); // print set point, temperature in celcius
           Serial.print(",");
-          Serial.print(temp);
+          Serial.print(temp); // print process value, temperature in celsius
+          Serial.print(",");
+          Serial.print(hum); // prints humidity, relative %
           Serial.print(",");
           Serial.print(10 + Output / 100); // prints PID output 10-20
           Serial.print(",");
@@ -282,8 +292,8 @@ void loop(void) {
   /*******************************
      PID
    *******************************/
-  PIDCalculated = myPID.Compute(); // this only calculates once every second and returns True when it does
-  writeToHeatingRelay(Output); // switch relay on or off
+  PIDCalculated = myPID.Compute(); // this only calculates once every second and returns TRUE when it does
+  writeToheatRelay(Output); // switch relay on or off
   if (PIDCalculated) {
     if (!plot) Serial.print("SP: ");
     if (!plot) Serial.print(setPointTemp);
@@ -296,14 +306,14 @@ void loop(void) {
     if (!plot) Serial.print(", OTV: ");
     if (!plot) Serial.println(onTimeVal);
     if (!plot) Serial.print(", HRS: ");
-    if (!plot) Serial.println((heatingRelayState) ? "On" : "OFF");
+    if (!plot) Serial.println((heatRelayState) ? "On" : "OFF");
     if (!plot) Serial.println();
     printPIDOutput(); // print PID output to LCD
   }
 
   if ( heatState != heatStateLast ) { // there has been a change in heating or cooling
     printHeatState(); // print heat state to LCD and serial
-    heatStateLast = heatState;
+    heatStateLast = heatState; // store last value
   }
 
   /*******************************
@@ -311,11 +321,11 @@ void loop(void) {
   *******************************/
   fanRelayState = HIGH; // fan is always on
   fanState = 1;
-  digitalWrite(fanRelay, fanRelayState)
+  digitalWrite(fanRelay, fanRelayState);
 
   if ( fanState != fanStateLast ) { // there has been a change in fan status
     printFanState(); // print fan status to LCD and serial
-    fanStateLast = fanState;
+    fanStateLast = fanState; // store last value
   }
 }
 
@@ -345,32 +355,30 @@ double dewPointFastFunction(double celsius, double humidity) {
 }
 
 int intToStringToLength(int val) { // returns how many numbers in integer
-  valString = String(val);
-  valLength = valString.length();
+  valString = String(val); // convert to string
+  valLength = valString.length(); // count number of characters in string
   return valLength;
 }
 
 void printSetPoint() { // prints set point temp to LCD
-  lcd.setCursor(0, 0);
+  lcd.setCursor(setPointYOffset, 0);
   lcd.print(setPointTempText);
   valLength = setPointTempText.length(); // number of characters before digits
-  lcd.setCursor(valLength, 0);
+  lcd.setCursor(setPointYOffset + valLength, 0);
   lcd.print(setPointTemp, 1); // prints set point
   dtostrf(setPointTemp, 1, 1, dtostrfbuffer);
   valLength = valLength + strlen(dtostrfbuffer); // number of characters before digits + number of digits
-  lcd.setCursor(valLength, 0);
+  lcd.setCursor(setPointYOffset + valLength, 0);
   lcd.print((char)223); // prints degree sign
-  lcd.setCursor(1 + valLength, 0);
+  lcd.setCursor(setPointYOffset + valLength + 1, 0);
   lcd.print(" ");
 }
 
 void printActualValues() { // prints measured values to serial and LCD
-  // calculate dew points
-  dewPoint = dewPointFunction(temp, hum);
+  dewPoint = dewPointFunction(temp, hum);   // calculate dew points in two different ways
   dewPointFast = dewPointFastFunction(temp, hum);
 
-  // compute heat index in Celsius (isFahrenheit = false)
-  hic = dht.computeHeatIndex(temp, hum, false);
+  hic = dht.computeHeatIndex(temp, hum, false);   // calculate heat index in Celsius (isFahrenheit = false)
 
   if (!plot) Serial.print("    Dew Point: ");
   if (!plot) Serial.println(dewPoint);
@@ -382,38 +390,40 @@ void printActualValues() { // prints measured values to serial and LCD
   if (!plot) Serial.print("    Temperature: ");
   if (!plot) Serial.println(temp);
 
-  lcd.setCursor(2 + valLength, 0);
+  lcd.setCursor(actualTempYOffset, 0);
   lcd.print(actualTempText);
-  valLength = valLength + actualTempText.length();
-  lcd.setCursor(2 + valLength, 0);
+  valLength = actualTempText.length();
+  lcd.setCursor(actualTempYOffset + valLength, 0);
   lcd.print(temp, 1);
   dtostrf(temp, 1, 1, dtostrfbuffer);
   valLength = valLength + strlen(dtostrfbuffer);
-  lcd.setCursor(2 + valLength, 0);
+  lcd.setCursor(actualTempYOffset + valLength, 0);
   lcd.print((char)223);
-  lcd.setCursor(3 + valLength, 0);
+  lcd.setCursor(actualTempYOffset + valLength + 1, 0);
   lcd.print(" ");
 
   if (!plot) Serial.print("    Humidity: ");
   if (!plot) Serial.println(hum);
 
-  lcd.setCursor(0, 1);
-  lcd.print("Hum:");
-  lcd.setCursor(4, 1);
+  lcd.setCursor(humidityYOffset, 1);
+  lcd.print(humidityText);
+  valLength = humidityText.length(); // number of characters before digits
+  lcd.setCursor(humidityYOffset + valLength, 1);
   lcd.print(hum, 0);
-  valLength = intToStringToLength(hum);
-  lcd.setCursor(4 + valLength, 1);
+  dtostrf(hum, 1, 0, dtostrfbuffer);
+  valLength = valLength + strlen(dtostrfbuffer);
+  lcd.setCursor(humidityYOffset + valLength, 1);
   lcd.print("%  ");
 
   if (!plot) Serial.println();
 }
 
 void printPIDOutput() { // prints PID output to LCD
-  lcd.setCursor(9, 1);
+  lcd.setCursor(PIDYOffset, 1);
   int output = round(Output / 10);
   lcd.print(output);
   valLength = intToStringToLength(output);
-  lcd.setCursor(9 + valLength, 1);
+  lcd.setCursor(PIDYOffset + valLength, 1);
   lcd.print("%  ");
 }
 
@@ -445,31 +455,30 @@ void printFanState() { // prints fan state to LCD and serial
 	    lcd.print(" ");
 	  }
 	  if (!plot) Serial.println();
-	}
 }
 
-void writeToHeatingRelay(double value) {
+void writeToheatRelay(double value) {
   windowTime = millis() % windowSize; // convert millis into a millisecond counter that resets at windowSize
   onTimeVal = (unsigned long)(value * (double)windowSize / 1000.0); // convert windowSize into seconds and multiply it by output which ranges from 0 to 1000
 
   if (onTimeVal > windowTime) {
-    heatingRelayState = HIGH;
+    heatRelayState = HIGH;
     heatState = 1;
 
   } else {
-    heatingRelayState = LOW;
+    heatRelayState = LOW;
     heatState = 0;
   }
 
-  digitalWrite(heatingRelay, heatingRelayState); // set the output
+  digitalWrite(heatRelay, heatRelayState); // set the output
   /*
     // short cycle prevention (Blink without delay)
     static unsigned long ShortCycleTimer;
     if ((millis() - ShortCycleTimer) >= (5000)) {
-    if ((digitalRead(heatingRelay) == LOW) && (heatingRelayState = HIGH)) {
+    if ((digitalRead(heatRelay) == LOW) && (heatRelayState = HIGH)) {
     	ShortCycleTimer = millis(); // this sets a blink without delay timer that prevents the following line from triggeringfor 5 seconds after it changes the output to HIGH
     }
-    digitalWrite(heatingRelay, heatingRelayState); // set the output
+    digitalWrite(heatRelay, heatRelayState); // set the output
     }
   */
 }
