@@ -1,4 +1,4 @@
-String programName = "ardBeeQueenPID4AutoTune";
+String programName = "ardBeeQueenPID3AutoTune";
 String date = "201910019";
 String author = "Jon Sagebrand";
 String email = "jonsagebrand@gmail.com";
