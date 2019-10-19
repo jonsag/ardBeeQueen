@@ -30,14 +30,14 @@ String email = "jonsagebrand@gmail.com";
 bool plot = 1;
 
 /*******************************
- * EEPROM setup
+   EEPROM setup
  *******************************/
 // include EEPROM library
 #include <EEPROM.h>
 int eeAddr = 0; // address to store the set point temp
 
 /*******************************
- * DHT setup
+   DHT setup
  *******************************/
 // include the DHT library
 #include <DHT.h>
@@ -60,14 +60,16 @@ double dewPointFast = 0; // another calculated dew point
 float hic = 0;
 
 /*******************************
- * Input/Output pins setup
+   Input/Output pins setup
  *******************************/
 // relay pins
 const int heatingRelay = 3;  // relay heating
 int heatingRelayState;
-const int coolingRelay = 4;  // relay cooling
 int heatState = 0; // current state of operation
 int heatStateLast = 0; // last state of operation
+const int fanRelay = 4;  // relay cooling
+int fanState = 0; // current state of operation
+int fanStateLast = 0; // last state of operation
 
 // rotary encoder pins
 const int encoderCLK = 5; // rotary encoder CLK signal input pin
@@ -84,7 +86,7 @@ unsigned long encoderSWTimeMillis = 0; // the last time encoder button was toggl
 int debounce = 200;   // the debounce time, increase if the output flickers
 
 /*******************************
- * LCD setup
+   LCD setup
  *******************************/
 // include the LCD library
 #include <LiquidCrystal.h>
@@ -95,7 +97,7 @@ int lcdColumns = 16;
 int lcdRows = 2;
 
 /*******************************
- * PID setup
+   PID setup
  *******************************/
 // include PID library by Brett Beauregard
 #include <PID_v1.h>
@@ -103,7 +105,7 @@ int lcdRows = 2;
 double setPointTemp = 34.5; // the goal temp, in degrees celsius
 double Output; // the PIDs output
 // specify tuning parameters
-double Kp = 5.0, Ki = 3.0, Kd = 3.0; // PID variables
+double Kp = 0.2, Ki = 100.0, Kd = 5.0; // PID variables
 PID myPID(&temp, &Output, &setPointTemp, Kp, Ki, Kd, DIRECT);
 // PID limits
 unsigned long windowSize = 30000; // the time of the PID regulatory size(?)
@@ -112,7 +114,7 @@ unsigned long windowTime;
 unsigned long onTimeVal; // on time value
 
 /*******************************
- * Text output setup
+   Text output setup
  *******************************/
 // for calculation of length of values
 String valString = "";
@@ -184,7 +186,7 @@ void setup(void) {
   lcd.setCursor(0, 1);
   lcd.print("Starting outputs ...");
   pinMode(heatingRelay, OUTPUT);
-  pinMode(coolingRelay, OUTPUT);
+  pinMode(fanRelay, OUTPUT);
   // rotary encoder pins
   if (!plot) Serial.println("Starting inputs ...");
   lcd.setCursor(0, 1);
@@ -214,7 +216,7 @@ void setup(void) {
 
 void loop(void) {
   /*******************************
-   * Rotary Encoder
+     Rotary Encoder
    *******************************/
   // read rotary encoder
   encoderCLKState = digitalRead(encoderCLK);
@@ -252,7 +254,7 @@ void loop(void) {
   printSetPoint(); // print the new set point temp to LCD
 
   /*******************************
-   * Temperature
+     Temperature
    ********************************/
   if ( encoderSWState ) { // only read values if button is UP
     if ( millis() - readMillis >= waitTime ) { // check if it is time to read sensor
@@ -281,10 +283,10 @@ void loop(void) {
   }
 
   /*******************************
-   * PID
+     PID
    *******************************/
   PIDCalculated = myPID.Compute(); // this only calculates once every second and returns True when it does
-  writeToHeatingRelay(Output);
+  writeToHeatingRelay(Output); // switch relay on or off
   if (PIDCalculated) {
     if (!plot) Serial.print("SP: ");
     if (!plot) Serial.print(setPointTemp);
@@ -305,6 +307,18 @@ void loop(void) {
   if ( heatState != heatStateLast ) { // there has been a change in heating or cooling
     printHeatState(); // print heat state to LCD and serial
     heatStateLast = heatState;
+  }
+
+  /*******************************
+   Fan
+  *******************************/
+  fanRelayState = HIGH; // fan is always on
+  fanState = 1;
+  digitalWrite(fanRelay, fanRelayState)
+
+  if ( fanState != fanStateLast ) { // there has been a change in fan status
+    printFanState(); // print fan status to LCD and serial
+    fanStateLast = fanState;
   }
 }
 
@@ -408,11 +422,11 @@ void printPIDOutput() { // prints PID output to LCD
 
 void printHeatState() { // prints heat state (ie C, H or W) to LCD and serial
   if ( heatState == 0 ) {
-    if (!plot) Serial.println("Cooling...");
+    if (!plot) Serial.println("Cooling ...");
     lcd.setCursor(15, 1);
     lcd.print("C");
   } else if ( heatState == 1 ) {
-    if (!plot) Serial.println("Heating...");
+    if (!plot) Serial.println("Heating ...");
     lcd.setCursor(15, 1);
     lcd.print("H");
   } else {
@@ -421,6 +435,20 @@ void printHeatState() { // prints heat state (ie C, H or W) to LCD and serial
     lcd.print("W");
   }
   if (!plot) Serial.println();
+}
+
+void printFanState() { // prints fan state to LCD and serial
+	  if ( fanState == 1 ) {
+	    if (!plot) Serial.println("Fan ON");
+	    lcd.setCursor(14, 1);
+	    lcd.print("F");
+	  } else {
+	    if (!plot) Serial.println("Fan OFF");
+	    lcd.setCursor(14, 1);
+	    lcd.print(" ");
+	  }
+	  if (!plot) Serial.println();
+	}
 }
 
 void writeToHeatingRelay(double value) {
