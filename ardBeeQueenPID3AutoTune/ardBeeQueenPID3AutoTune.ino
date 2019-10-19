@@ -3,19 +3,22 @@ String date = "201910019";
 String author = "Jon Sagebrand";
 String email = "jonsagebrand@gmail.com";
 
-// enable plotting function
-// all other output to serial will be suppressed
-bool plot = 1;
+bool plot = 1; // enable plotting function, all other output to serial will be suppressed
+
+boolean tuning = false; // do PID AutoTune
+
+boolean useSimulation = false; // use real values or simulate
+
 
 /*******************************
- * EEPROM setup
+   EEPROM setup
  *******************************/
 // include EEPROM library
 #include <EEPROM.h>
 int eeAddr = 0; // address to store the set point temp
 
 /*******************************
- * DHT setup
+   DHT setup
  *******************************/
 // include the DHT library
 #include <DHT.h>
@@ -38,7 +41,7 @@ double dewPointFast = 0; // another calculated dew point
 float hic = 0;
 
 /*******************************
- * Input/Output pins setup
+   Input/Output pins setup
  *******************************/
 // relay pins
 const int heatingRelay = 3;  // relay heating
@@ -62,7 +65,7 @@ unsigned long encoderSWTimeMillis = 0; // the last time encoder button was toggl
 int debounce = 200;   // the debounce time, increase if the output flickers
 
 /*******************************
- * LCD setup
+   LCD setup
  *******************************/
 // include the LCD library
 #include <LiquidCrystal.h>
@@ -74,17 +77,17 @@ int LCD_D5 = 10; // LCD D5, pin 12, databit 5
 int LCD_D6 = 9; // LCD D6, pin 13, databit 6
 int LCD_D7 = 8; // LCD D7, pin 14, databit7
 /* other pins on LCD are:
- * VSS, pin 1, GND
- * VDD, pin 2, +5V
- * V0, pin 3, 10k potentiometer, ends to +5V and GND, middle pin to V0, contrast
- * R/W, pin 5, GND, Read/Write
- * A, pin 15, 220ohm resistor, one end to +5V, other to A, back light anode, ~+4.2V
- * K, pin 16, GND, back light cathode
- * D0, pin 7, databit 0, not used/connected
- * D1, pin 8, databit 1, not used/connected
- * D2, pin 9, databit 2, not used/connected
- * D3, pin 10, databit 3, not used/connected
- */
+   VSS, pin 1, GND
+   VDD, pin 2, +5V
+   V0, pin 3, 10k potentiometer, ends to +5V and GND, middle pin to V0, contrast
+   R/W, pin 5, GND, Read/Write
+   A, pin 15, 220ohm resistor, one end to +5V, other to A, back light anode, ~+4.2V
+   K, pin 16, GND, back light cathode
+   D0, pin 7, databit 0, not used/connected
+   D1, pin 8, databit 1, not used/connected
+   D2, pin 9, databit 2, not used/connected
+   D3, pin 10, databit 3, not used/connected
+*/
 // initialize the LCD library
 LiquidCrystal lcd(LCD_RS, LCD_EN, LCD_D4, LCD_D5, LCD_D6, LCD_D7);
 // columns and rows of the LCD
@@ -92,13 +95,13 @@ int lcdColumns = 16;
 int lcdRows = 2;
 
 /*******************************
- * PID setup
+   PID setup
  *******************************/
 // include PID library by Brett Beauregard
 #include <PID_v1.h>
 // define variables
 double setPointTemp = 34.5; // the goal temp, in degrees celsius
-double Output; // the PIDs output
+double Output = 50; // the PIDs output
 // specify tuning parameters
 double Kp = 5.0, Ki = 3.0, Kd = 3.0; // PID variables
 PID myPID(&temp, &Output, &setPointTemp, Kp, Ki, Kd, DIRECT); // define PID
@@ -109,23 +112,21 @@ unsigned long windowTime;
 unsigned long onTimeVal; // on time value
 
 /*******************************
- * PID AutoTune setup
+   PID AutoTune setup
  *******************************/
 #include <PID_AutoTune_v0.h> // include PID AutoTune library by Brett Beauregard
 // define variables
-byte ATuneModeRemember=2;
-double kpmodel=1.5, taup=100, theta[50];
-double outputStart=5;
-double aTuneStep=50, aTuneNoise=1, aTuneStartValue=100;
-unsigned int aTuneLookBack=20;
-boolean tuning = false;
-unsigned long  modelTime, serialTime;
-PID_ATune aTune(&input, &output); // define PID AutoTune
-
-boolean useSimulation = true; //set to false to connect to the real world
+byte ATuneModeRemember = 2;
+double Kpmodel = 1.5, taup = 100, theta[50];
+double OutputStart = 5;
+double aTuneStep = 50, aTuneNoise = 1, aTuneStartValue = 100;
+unsigned int aTuneLookBack = 20;
+unsigned long modelTime, serialTime, now;
+PID_ATune aTune(&temp, &Output); // define PID AutoTune
+byte ATval;
 
 /*******************************
- * Text output setup
+   Text output setup
  *******************************/
 // for calculation of length of values
 String valString = "";
@@ -139,8 +140,9 @@ String actualTempText = "A:";
 char dtostrfbuffer[5];
 
 void setup(void) {
-
-  // start LCD
+  /*******************************
+     start LCD
+   *******************************/
   lcd.begin(lcdColumns, lcdRows);
   // print a message to the LCD
   lcd.setCursor(0, 0);
@@ -148,153 +150,214 @@ void setup(void) {
   lcd.setCursor(0, 1);
   lcd.print("Booting ...");
 
-  // start serial port
+  /*******************************
+     start serial
+   *******************************/
   lcd.setCursor(0, 1);
   lcd.print("Starting serial ...");
   Serial.begin(9600);
 
-  // print information
-  if (!plot) Serial.println(programName);
-  if (!plot) Serial.println(date);
-  if (!plot) Serial.print("by ");
-  if (!plot) Serial.print(author);
-  if (!plot) Serial.println(email);
-  if (!plot) Serial.println();
+  /*******************************
+     print information
+   *******************************/
+  if (!plot) {
+    Serial.println(programName);
+    Serial.println(date);
+    Serial.print("by ");
+    Serial.print(author);
+    Serial.println(email);
+    Serial.println();
+  }
 
-  // read set temp from eeprom
-  if (!plot) Serial.println("Reading last temp from eeprom ...");
+  /*******************************
+     read set temp from eeprom
+   *******************************/
+  if (!plot)
+    Serial.println("Reading last temp from eeprom ...");
   lcd.setCursor(0, 1);
   lcd.print("Reading last temp ...");
   float f = 0.00f;
-  EEPROM.get( eeAddr, f );
-  if (!plot) Serial.println( f );
+  EEPROM.get(eeAddr, f);
+  if (!plot) Serial.println(f);
 
   // check if there is a value stored in eeprom
   // if so, then use it as set point,
   // else store the predefined value
-  if ( isnan(f) ) {
-    if (!plot) Serial.println("No value found in eeprom");
-    if (!plot) Serial.print("Storing value: ");
-    if (!plot) Serial.println(setPointTemp);
+  if (isnan(f)) {
+    if (!plot) {
+      Serial.println("No value found in eeprom");
+      Serial.print("Storing value: ");
+      Serial.println(setPointTemp);
+    }
     EEPROM.put(eeAddr, setPointTemp);
   } else {
-    if (!plot) Serial.print("Found a value stored in eeprom: ");
-    if (!plot) Serial.println(f);
-    if (!plot) Serial.println("Using it as set point temperature");
+    if (!plot) {
+      Serial.print("Found a value stored in eeprom: ");
+      Serial.println(f);
+      Serial.println("Using it as set point temperature");
+    }
     setPointTemp = f;
-    if (!plot) Serial.println();
+    if (!plot) {
+      Serial.println();
+    }
   }
 
-  // start DHT sensor
-  if (!plot) Serial.println("Starting DHT sensor ...");
+  /*******************************
+     start DHT sensor
+   *******************************/
+  if (!plot) {
+    Serial.println("Starting DHT sensor ...");
+  }
   lcd.setCursor(0, 1);
   lcd.print("Starting sensor ...");
   dht.begin();  // start up dht sensors
 
-  // define in- and outputs
+  /*******************************
+     define in- and outputs
+   *******************************/
   // relay pins
-  if (!plot) Serial.println("Starting outputs  ...");
+  if (!plot) {
+    Serial.println("Starting outputs  ...");
+  }
   lcd.setCursor(0, 1);
   lcd.print("Starting outputs ...");
   pinMode(heatingRelay, OUTPUT);
   pinMode(coolingRelay, OUTPUT);
   // rotary encoder pins
-  if (!plot) Serial.println("Starting inputs ...");
+  if (!plot) {
+    Serial.println("Starting inputs ...");
+  }
   lcd.setCursor(0, 1);
   lcd.print("Starting inputs ...");
   pinMode(encoderCLK, INPUT);
   pinMode(encoderDT, INPUT);
   pinMode(encoderSW, INPUT);
 
-  // start PID
-  if (!plot) Serial.println("Starting PID ...");
+  /*******************************
+     start PID
+   *******************************/
+  if (!plot) {
+    Serial.println("Starting PID ...");
+  }
   lcd.setCursor(0, 1);
   lcd.print("Starting PID ...");
   myPID.SetOutputLimits(0, 1000); // 1000 steps in the control loop
   myPID.SetSampleTime(1000); //default is 100 miliseconds
-  myPID.SetMode(MANUAL);// clears windup anc verifies PID calculations are correct based on sample time
+  myPID.SetMode(MANUAL); // clears windup anc verifies PID calculations are correct based on sample time
   delay(5000); // prep the millis() timer below to have 5 seconds on it before PID starts calculating and turns on the heater
   myPID.SetMode(AUTOMATIC); // // start the PID ready for first calculation
 
-  // start PID AutoTune
-  if (!plot) Serial.println("Starting PID AutoTune ...");
+  /*******************************
+     start PID AutoTune
+   *******************************/
+  if (!plot) {
+    Serial.println("Starting PID AutoTune ...");
+  }
   lcd.setCursor(0, 1);
   lcd.print("Starting PID AutoTune ...");
-  if(useSimulation) {
-    for(byte i=0;i<50;i++) {
-      theta[i]=outputStart;
+
+  if (useSimulation) {
+    for (byte i = 0; i < 50; i++) {
+      theta[i] = OutputStart;
     }
     modelTime = 0;
   }
-  if(tuning) {
-    tuning=false;
+
+  if (tuning) {
+    tuning = false;
     changeAutoTune();
-    tuning=true;
+    tuning = true;
   }
+
   serialTime = 0;
 
+  /*******************************
+     start
+   *******************************/
   lcd.clear();
 
   printSetPoint(); // print set point temp to LCD
   printHeatState(); // print heat state to LCD and serial
 
-  if (!plot) Serial.println("Program starts ...");
-  if (!plot) Serial.println();
+  if (!plot) {
+    Serial.println("Auto tuning is off");
+    Serial.println("Send 'b' on serial to start");
+    Serial.println();
+    Serial.println("Program starts ...");
+    Serial.println();
+  }
 }
 
 void loop(void) {
+  now = millis();
+
   /*******************************
-   * Rotary Encoder
+     Rotary Encoder
    *******************************/
   // read rotary encoder
   encoderCLKState = digitalRead(encoderCLK);
   encoderDTState = digitalRead(encoderDT);
   encoderSWState = digitalRead(encoderSW);
 
-  if ( encoderSWState == 0 ) { // button is pressed
+  if (encoderSWState == 0) { // button is pressed
     if ((encoderDTStateLast == 0) && (encoderDTState == 1)) { // encoder has been turned
       if (encoderCLKState == 0) { // encoder is turned clockwise
         setPointTemp += 0.1;
-        if (!plot) Serial.print("Increasing set point. New value: ");
+        if (!plot && !tuning) {
+          Serial.print("Increasing set point. New value: ");
+        }
       } else { // encoder is turned anti clockwise
         setPointTemp -= 0.1;
-        if (!plot) Serial.print("Decreasing set point. New value: ");
+        if (!plot && !tuning) {
+          Serial.print("Decreasing set point. New value: ");
+        }
       }
-      if (!plot) Serial.println(setPointTemp);
+      if (!plot && !tuning) {
+        Serial.println(setPointTemp);
+      }
     }
     encoderDTStateLast = encoderDTState; // store last value
   }
 
-  if ( encoderSWState != encoderSWStateLast ) { // button has toggled
-    if ( encoderSWState == 0 ) { // button was pressed
-      if (!plot) Serial.println("Button is down");
+  if (encoderSWState != encoderSWStateLast) { // button has toggled
+    if (encoderSWState == 0) { // button was pressed
+      if (!plot && !tuning) {
+        Serial.println("Button is down");
+      }
     } else { // button was released
-      if (!plot) Serial.println("Button is up");
-      if (!plot) Serial.print("Storing new value to eeprom: ");
-      if (!plot) Serial.print(setPointTemp);
-      if (!plot) Serial.println(" ...");
+      if (!plot && !tuning) {
+        Serial.println("Button is up");
+        Serial.print("Storing new value to eeprom: ");
+        Serial.print(setPointTemp);
+        Serial.println(" ...");
+      }
       EEPROM.put(eeAddr, setPointTemp); // write new set point to eeprom
     }
     encoderSWStateLast = encoderSWState; // store last value of encoder switch
-    if (!plot) Serial.println();
+    if (!plot && !tuning) {
+      Serial.println();
+    }
   }
 
   printSetPoint(); // print the new set point temp to LCD
 
   /*******************************
-   * Temperature
+     Temperature
    ********************************/
-  if ( encoderSWState ) { // only read values if button is UP
-    if ( millis() - readMillis >= waitTime ) { // check if it is time to read sensor
-      if (!plot) Serial.println("Requesting humidity and temperature ...");
+  if (encoderSWState && !useSimulation) { // only read values if button is UP and not in simulation mode
+    if (millis() - readMillis >= waitTime) { // check if it is time to read sensor
+      if (!plot && !tuning) {
+        Serial.println("Requesting humidity and temperature ...");
+      }
       hum = dht.readHumidity();
       temp = dht.readTemperature(); // read temperature as celsius
 
       if (isnan(hum) || isnan(temp)) { // check if any reads failed
-        if (!plot) Serial.println(F("Failed to read from DHT sensor!"));
+        if (!plot && !tuning) {
+          Serial.println(F("Failed to read from DHT sensor!"));
+        }
         return;
-      }
-      else {
+      } else {
         if (plot) {
           Serial.print(setPointTemp);
           Serial.print(",");
@@ -311,28 +374,63 @@ void loop(void) {
   }
 
   /*******************************
-   * PID
+     PID
    *******************************/
-  PIDCalculated = myPID.Compute(); // this only calculates once every second and returns True when it does
-  writeToHeatingRelay(Output);
-  if (PIDCalculated) {
-    if (!plot) Serial.print("SP: ");
-    if (!plot) Serial.print(setPointTemp);
-    if (!plot) Serial.print("°C, PV: ");
-    if (!plot) Serial.print(temp);
-    if (!plot) Serial.print("°C, PIDout: ");
-    if (!plot) Serial.print(Output / 10);
-    if (!plot) Serial.print("%, WT: ");
-    if (!plot) Serial.print(windowTime);
-    if (!plot) Serial.print(", OTV: ");
-    if (!plot) Serial.println(onTimeVal);
-    if (!plot) Serial.print(", HRS: ");
-    if (!plot) Serial.println((heatingRelayState) ? "On" : "OFF");
-    if (!plot) Serial.println();
-    printPIDOutput(); // print PID output to LCD
+  if (tuning) {
+    ATval = (aTune.Runtime());
+    if (ATval != 0) {
+      tuning = false;
+    }
+    if (!tuning) { // we're done, set the tuning parameters
+      Kp = aTune.GetKp();
+      Ki = aTune.GetKi();
+      Kd = aTune.GetKd();
+      myPID.SetTunings(Kp, Ki, Kd);
+      AutoTuneHelper(false);
+    }
+  } else {
+    PIDCalculated = myPID.Compute(); // this only calculates once every second and returns True when it does
+    writeToHeatingRelay(Output);
+    if (PIDCalculated) {
+      if (!plot && !tuning) {
+        Serial.print("SP: ");
+        Serial.print(setPointTemp);
+        Serial.print("°C, PV: ");
+        Serial.print(temp);
+        Serial.print("°C, PIDout: ");
+        Serial.print(Output / 10);
+        Serial.print("%, WT: ");
+        Serial.print(windowTime);
+        Serial.print(", OTV: ");
+        Serial.println(onTimeVal);
+        Serial.print(", HRS: ");
+        Serial.println((heatingRelayState) ? "On" : "OFF");
+        Serial.println();
+      }
+      printPIDOutput(); // print PID output to LCD
+    }
   }
 
-  if ( heatState != heatStateLast ) { // there has been a change in heating or cooling
+  /*******************************
+     PID AutoTune
+   *******************************/
+  if (useSimulation) {
+    theta[30] = Output;
+    if (now >= modelTime) {
+      modelTime += 100;
+      DoModel();
+    }
+  } else {
+    writeToHeatingRelay(Output);
+  }
+
+  if (millis() > serialTime) { // send-receive with processing if it's time
+    SerialReceive();
+    SerialSend();
+    serialTime += 500;
+  }
+
+  if (heatState != heatStateLast) { // there has been a change in heating or cooling
     printHeatState(); // print heat state to LCD and serial
     heatStateLast = heatState;
   }
@@ -378,7 +476,7 @@ void printSetPoint() { // prints set point temp to LCD
   dtostrf(setPointTemp, 1, 1, dtostrfbuffer);
   valLength = valLength + strlen(dtostrfbuffer); // number of characters before digits + number of digits
   lcd.setCursor(valLength, 0);
-  lcd.print((char)223); // prints degree sign
+  lcd.print((char) 223); // prints degree sign
   lcd.setCursor(1 + valLength, 0);
   lcd.print(" ");
 }
@@ -391,15 +489,16 @@ void printActualValues() { // prints measured values to serial and LCD
   // compute heat index in Celsius (isFahrenheit = false)
   hic = dht.computeHeatIndex(temp, hum, false);
 
-  if (!plot) Serial.print("    Dew Point: ");
-  if (!plot) Serial.println(dewPoint);
-  if (!plot) Serial.print("    Dew Point Fast: ");
-  if (!plot) Serial.println(dewPointFast);
-  if (!plot) Serial.print("    Heat Index: ");
-  if (!plot) Serial.println(hic);
-
-  if (!plot) Serial.print("    Temperature: ");
-  if (!plot) Serial.println(temp);
+  if (!plot && !tuning) {
+    Serial.print("    Dew Point: ");
+    Serial.println(dewPoint);
+    Serial.print("    Dew Point Fast: ");
+    Serial.println(dewPointFast);
+    Serial.print("    Heat Index: ");
+    Serial.println(hic);
+    Serial.print("    Temperature: ");
+    Serial.println(temp);
+  }
 
   lcd.setCursor(2 + valLength, 0);
   lcd.print(actualTempText);
@@ -409,12 +508,14 @@ void printActualValues() { // prints measured values to serial and LCD
   dtostrf(temp, 1, 1, dtostrfbuffer);
   valLength = valLength + strlen(dtostrfbuffer);
   lcd.setCursor(2 + valLength, 0);
-  lcd.print((char)223);
+  lcd.print((char) 223);
   lcd.setCursor(3 + valLength, 0);
   lcd.print(" ");
 
-  if (!plot) Serial.print("    Humidity: ");
-  if (!plot) Serial.println(hum);
+  if (!plot && !tuning) {
+    Serial.print("    Humidity: ");
+    Serial.println(hum);
+  }
 
   lcd.setCursor(0, 1);
   lcd.print("Hum:");
@@ -424,7 +525,9 @@ void printActualValues() { // prints measured values to serial and LCD
   lcd.setCursor(4 + valLength, 1);
   lcd.print("%  ");
 
-  if (!plot) Serial.println();
+  if (!plot && !tuning) {
+    Serial.println();
+  }
 }
 
 void printPIDOutput() { // prints PID output to LCD
@@ -437,25 +540,33 @@ void printPIDOutput() { // prints PID output to LCD
 }
 
 void printHeatState() { // prints heat state (ie C, H or W) to LCD and serial
-  if ( heatState == 0 ) {
-    if (!plot) Serial.println("Cooling...");
+  if (heatState == 0) {
+    if (!plot && !tuning) {
+      Serial.println("Cooling...");
+    }
     lcd.setCursor(15, 1);
     lcd.print("C");
-  } else if ( heatState == 1 ) {
-    if (!plot) Serial.println("Heating...");
+  } else if (heatState == 1) {
+    if (!plot && !tuning) {
+      Serial.println("Heating...");
+    }
     lcd.setCursor(15, 1);
     lcd.print("H");
   } else {
-    if (!plot) Serial.println("At goal temp or waiting for button to come up");
+    if (!plot && !tuning) {
+      Serial.println("At goal temp or waiting for button to come up");
+    }
     lcd.setCursor(15, 1);
     lcd.print("W");
   }
-  if (!plot) Serial.println();
+  if (!plot && !tuning) {
+    Serial.println();
+  }
 }
 
 void writeToHeatingRelay(double value) {
   windowTime = millis() % windowSize; // convert millis into a millisecond counter that resets at windowSize
-  onTimeVal = (unsigned long)(value * (double)windowSize / 1000.0); // convert windowSize into seconds and multiply it by output which ranges from 0 to 1000
+  onTimeVal = (unsigned long) (value * (double) windowSize / 1000.0); // convert windowSize into seconds and multiply it by output which ranges from 0 to 1000
 
   if (onTimeVal > windowTime) {
     heatingRelayState = HIGH;
@@ -472,9 +583,90 @@ void writeToHeatingRelay(double value) {
     static unsigned long ShortCycleTimer;
     if ((millis() - ShortCycleTimer) >= (5000)) {
     if ((digitalRead(heatingRelay) == LOW) && (heatingRelayState = HIGH)) {
-    	ShortCycleTimer = millis(); // this sets a blink without delay timer that prevents the following line from triggeringfor 5 seconds after it changes the output to HIGH
+    ShortCycleTimer = millis(); // this sets a blink without delay timer that prevents the following line from triggeringfor 5 seconds after it changes the output to HIGH
     }
     digitalWrite(heatingRelay, heatingRelayState); // set the output
     }
   */
+}
+
+void changeAutoTune() {
+  if (!tuning) {
+    if (!plot) {
+      Serial.println("Auto tune OFF");
+      Serial.println();
+    }
+
+    Output = aTuneStartValue; // set the output to the desired starting frequency
+    aTune.SetNoiseBand(aTuneNoise);
+    aTune.SetOutputStep(aTuneStep);
+    aTune.SetLookbackSec((int) aTuneLookBack);
+    AutoTuneHelper(true);
+    tuning = true;
+  } else { // cancel autotune
+    if (!plot) {
+      Serial.println("Auto tune ON");
+      Serial.println();
+    }
+    aTune.Cancel();
+    tuning = false;
+    AutoTuneHelper(false);
+  }
+}
+
+void AutoTuneHelper(boolean start) {
+  if (start)
+    ATuneModeRemember = myPID.GetMode();
+  else
+    myPID.SetMode(ATuneModeRemember);
+}
+
+void SerialSend() {
+  if (!plot) {
+    Serial.print("Set point: ");
+    Serial.print(setPointTemp);
+    Serial.print(", ");
+    Serial.print("Actual temperature: ");
+    Serial.print(temp);
+    Serial.print(", ");
+    Serial.print("PID output: ");
+    Serial.print(Output);
+    Serial.print(", ");
+  }
+
+  if (tuning) {
+    if (!plot) {
+      Serial.println("Tuning mode");
+    }
+  } else {
+    if (!plot) {
+      Serial.print("Kp: ");
+      Serial.print(myPID.GetKp());
+      Serial.print(", ");
+      Serial.print("Ki: ");
+      Serial.print(myPID.GetKi());
+      Serial.print(", ");
+      Serial.print("Kd: ");
+      Serial.print(myPID.GetKd());
+      Serial.println();
+    }
+  }
+}
+
+void SerialReceive() { // catch what's sent on the serial
+  if (Serial.available()) {
+    char b = Serial.read();
+    Serial.flush();
+    if ((b == '1' && !tuning) || (b != '1' && tuning)) { // toggle auto tune
+      changeAutoTune();
+    }
+  }
+}
+
+void DoModel() { // run when in simulation mode
+  for (byte i = 0; i < 49; i++) { // cycle the dead time
+    theta[i] = theta[i + 1];
+  }
+
+  temp = (Kpmodel / taup) * (theta[0] - OutputStart) + temp * (1 - 1 / taup) + ((float) random(-10, 10)) / 100; //compute the input
 }
