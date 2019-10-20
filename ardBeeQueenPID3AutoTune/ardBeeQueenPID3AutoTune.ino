@@ -174,6 +174,7 @@ void setup(void) {
    *******************************/
   if (!plot)
     Serial.println("Reading last temp from eeprom ...");
+  	Serial.println();
   lcd.setCursor(0, 1);
   lcd.print("Reading last temp ...");
   float f = 0.00f;
@@ -188,6 +189,7 @@ void setup(void) {
       Serial.println("No value found in eeprom");
       Serial.print("Storing value: ");
       Serial.println(setPointTemp);
+      Serial.println();
     }
     EEPROM.put(eeAddr, setPointTemp);
   } else {
@@ -195,11 +197,9 @@ void setup(void) {
       Serial.print("Found a value stored in eeprom: ");
       Serial.println(f);
       Serial.println("Using it as set point temperature");
-    }
-    setPointTemp = f;
-    if (!plot) {
       Serial.println();
     }
+    setPointTemp = f;
   }
 
   /*******************************
@@ -207,6 +207,7 @@ void setup(void) {
    *******************************/
   if (!plot) {
     Serial.println("Starting DHT sensor ...");
+    Serial.println();
   }
   lcd.setCursor(0, 1);
   lcd.print("Starting sensor ...");
@@ -218,6 +219,7 @@ void setup(void) {
   // relay pins
   if (!plot) {
     Serial.println("Starting outputs  ...");
+    Serial.println();
   }
   lcd.setCursor(0, 1);
   lcd.print("Starting outputs ...");
@@ -226,6 +228,7 @@ void setup(void) {
   // rotary encoder pins
   if (!plot) {
     Serial.println("Starting inputs ...");
+    Serial.println();
   }
   lcd.setCursor(0, 1);
   lcd.print("Starting inputs ...");
@@ -238,6 +241,7 @@ void setup(void) {
    *******************************/
   if (!plot) {
     Serial.println("Starting PID ...");
+    Serial.println();
   }
   lcd.setCursor(0, 1);
   lcd.print("Starting PID ...");
@@ -250,13 +254,18 @@ void setup(void) {
   /*******************************
      start PID AutoTune
    *******************************/
-  if (!plot) {
+  if (!plot && tuning ) {
     Serial.println("Starting PID AutoTune ...");
+    Serial.println();
   }
   lcd.setCursor(0, 1);
   lcd.print("Starting PID AutoTune ...");
 
   if (useSimulation) {
+	if (!plot && tuning ) {
+	  Serial.println("Starting simulation mode ...");
+	  Serial.println();
+	}
     for (byte i = 0; i < 50; i++) {
       theta[i] = OutputStart;
     }
@@ -281,7 +290,7 @@ void setup(void) {
 
   if (!plot) {
     Serial.println("Auto tuning is off");
-    Serial.println("Send 'b' on serial to start");
+    Serial.println("Send '1' on serial to start");
     Serial.println();
     Serial.println("Program starts ...");
     Serial.println();
@@ -376,7 +385,7 @@ void loop(void) {
   /*******************************
      PID
    *******************************/
-  if (tuning) {
+  if (tuning) { // running PID auto tune mode
     ATval = (aTune.Runtime());
     if (ATval != 0) {
       tuning = false;
@@ -388,7 +397,7 @@ void loop(void) {
       myPID.SetTunings(Kp, Ki, Kd);
       AutoTuneHelper(false);
     }
-  } else {
+  } else { // running in normal mode
     PIDCalculated = myPID.Compute(); // this only calculates once every second and returns True when it does
     writeToHeatingRelay(Output);
     if (PIDCalculated) {
