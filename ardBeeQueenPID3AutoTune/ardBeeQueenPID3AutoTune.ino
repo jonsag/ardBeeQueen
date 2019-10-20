@@ -43,12 +43,16 @@ float hic = 0;
 /*******************************
    Input/Output pins setup
  *******************************/
-// relay pins
-const int heatingRelay = 3;  // relay heating
-int heatingRelayState;
-const int coolingRelay = 4;  // relay cooling
+// heating relay
+const int heatRelay = 3;  // relay heating
+int heatRelayState;
 int heatState = 0; // current state of operation
 int heatStateLast = 0; // last state of operation
+// fan relay
+const int fanRelay = 4;  // relay cooling
+int fanRelayState;
+int fanState = 0; // current state of operation
+int fanStateLast = 0; // last state of operation
 
 // rotary encoder pins
 const int encoderCLK = 5; // rotary encoder CLK signal input pin
@@ -226,16 +230,14 @@ void setup(void) {
   // relay pins
   if (!plot) {
     Serial.println("Starting outputs  ...");
-    Serial.println();
   }
   lcd.setCursor(0, 1);
   lcd.print("Starting outputs ...");
-  pinMode(heatingRelay, OUTPUT);
-  pinMode(coolingRelay, OUTPUT);
+  pinMode(heatRelay, OUTPUT);
+  pinMode(fanRelay, OUTPUT);
   // rotary encoder pins
   if (!plot) {
     Serial.println("Starting inputs ...");
-    Serial.println();
   }
   lcd.setCursor(0, 1);
   lcd.print("Starting inputs ...");
@@ -420,7 +422,7 @@ void loop(void) {
      *******************************/
   } else { // running in normal mode
     PIDCalculated = myPID.Compute(); // this only calculates once every second and returns True when it does
-    writeToHeatingRelay(Output); // turn heat relay on or off
+    writeToHeatRelay(Output); // turn heat relay on or off
     if (PIDCalculated) {
       if (!plot && !tuning) {
         Serial.print("SP: ");
@@ -434,7 +436,7 @@ void loop(void) {
         Serial.print(", OTV: ");
         Serial.println(onTimeVal);
         Serial.print(", HRS: ");
-        Serial.println((heatingRelayState) ? "On" : "OFF");
+        Serial.println((heatRelayState) ? "On" : "OFF");
         Serial.println();
       }
       printPIDOutput(); // print PID output to LCD
@@ -452,7 +454,7 @@ void loop(void) {
       printActualValues(); // print simulated values to serial and LCD
     }
   } else {
-    writeToHeatingRelay(Output);
+    writeToHeatRelay(Output);
   }
 
   if (millis() > serialTime) { // send-receive with processing if it's time
@@ -628,28 +630,28 @@ void printFanState() { // prints fan state to LCD and serial
   }
 }
 
-void writeToHeatingRelay(double value) {
+void writeToHeatRelay(double value) {
   windowTime = millis() % windowSize; // convert millis into a millisecond counter that resets at windowSize
-  onTimeVal = (unsigned long) (value * (double) windowSize / 1000.0); // convert windowSize into seconds and multiply it by output which ranges from 0 to 1000
+  onTimeVal = (unsigned long)(value * (double)windowSize / 1000.0); // convert windowSize into seconds and multiply it by output which ranges from 0 to 1000
 
   if (onTimeVal > windowTime) {
-    heatingRelayState = HIGH;
+    heatRelayState = HIGH;
     heatState = 1;
 
   } else {
-    heatingRelayState = LOW;
+    heatRelayState = LOW;
     heatState = 0;
   }
 
-  digitalWrite(heatingRelay, heatingRelayState); // set the output
+  digitalWrite(heatRelay, heatRelayState); // set the output
   /*
     // short cycle prevention (Blink without delay)
     static unsigned long ShortCycleTimer;
     if ((millis() - ShortCycleTimer) >= (5000)) {
-    if ((digitalRead(heatingRelay) == LOW) && (heatingRelayState = HIGH)) {
-    ShortCycleTimer = millis(); // this sets a blink without delay timer that prevents the following line from triggeringfor 5 seconds after it changes the output to HIGH
+    if ((digitalRead(heatRelay) == LOW) && (heatRelayState = HIGH)) {
+      ShortCycleTimer = millis(); // this sets a blink without delay timer that prevents the following line from triggeringfor 5 seconds after it changes the output to HIGH
     }
-    digitalWrite(heatingRelay, heatingRelayState); // set the output
+    digitalWrite(heatRelay, heatRelayState); // set the output
     }
   */
 }
