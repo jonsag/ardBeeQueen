@@ -135,6 +135,13 @@ int valLength;
 // text to print before temps
 String setPointTempText = "SP:";
 String actualTempText = "A:";
+String humidityText = "Hum:";
+
+// LCD text offsets
+const int setPointYOffset = 0;
+const int actualTempYOffset = 9;
+const int humidityYOffset = 0;
+const int PIDYOffset = 9;
 
 // buffer to store float to string
 char dtostrfbuffer[5];
@@ -287,11 +294,22 @@ void setup(void) {
 
   printSetPoint(); // print set point temp to LCD
   printHeatState(); // print heat state to LCD and serial
+  printFanState(); // print fan state to LCD and serial
 
   if (!plot) {
-    Serial.println("Auto tuning is off");
-    Serial.println("Send '1' on serial to start");
-    Serial.println();
+	if (!tuning) {
+      Serial.println("Auto tuning is off");
+      Serial.println("Send '1' on serial to start, and any other character to stop");
+      Serial.println();
+	} else {
+	  Serial.println("Auto tuning is on");
+	  Serial.println("Send any character but '1' on serial to stop, and any '1' to start");
+	  Serial.println();
+	}
+	if (useSimulation) {
+	  Serial.println("Running in simulation mode");
+	  Serial.println();
+	}
     Serial.println("Program starts ...");
     Serial.println();
   }
@@ -383,7 +401,7 @@ void loop(void) {
   }
 
   /*******************************
-     PID
+     PID AutoTune
    *******************************/
   if (tuning) { // running PID auto tune mode
     ATval = (aTune.Runtime());
@@ -397,9 +415,12 @@ void loop(void) {
       myPID.SetTunings(Kp, Ki, Kd);
       AutoTuneHelper(false);
     }
+    /*******************************
+      PID
+     *******************************/
   } else { // running in normal mode
     PIDCalculated = myPID.Compute(); // this only calculates once every second and returns True when it does
-    writeToHeatingRelay(Output);
+    writeToHeatingRelay(Output); // turn heat relay on or off
     if (PIDCalculated) {
       if (!plot && !tuning) {
         Serial.print("SP: ");
@@ -421,13 +442,14 @@ void loop(void) {
   }
 
   /*******************************
-     PID AutoTune
+     PID AutoTune simulation
    *******************************/
   if (useSimulation) {
     theta[30] = Output;
     if (now >= modelTime) {
       modelTime += 100;
       DoModel();
+      printActualValues(); // print simulated values to serial and LCD
     }
   } else {
     writeToHeatingRelay(Output);
@@ -442,6 +464,18 @@ void loop(void) {
   if (heatState != heatStateLast) { // there has been a change in heating or cooling
     printHeatState(); // print heat state to LCD and serial
     heatStateLast = heatState;
+  }
+
+  /*******************************
+   Fan
+  *******************************/
+  fanRelayState = HIGH; // fan is always on
+  fanState = 1;
+  digitalWrite(fanRelay, fanRelayState);
+
+  if ( fanState != fanStateLast ) { // there has been a change in fan status
+    printFanState(); // print fan status to LCD and serial
+    fanStateLast = fanState; // store last value
   }
 }
 
@@ -509,29 +543,31 @@ void printActualValues() { // prints measured values to serial and LCD
     Serial.println(temp);
   }
 
-  lcd.setCursor(2 + valLength, 0);
+  lcd.setCursor(actualTempYOffset, 0);
   lcd.print(actualTempText);
-  valLength = valLength + actualTempText.length();
-  lcd.setCursor(2 + valLength, 0);
+  valLength = actualTempText.length();
+  lcd.setCursor(actualTempYOffset + valLength, 0);
   lcd.print(temp, 1);
   dtostrf(temp, 1, 1, dtostrfbuffer);
   valLength = valLength + strlen(dtostrfbuffer);
-  lcd.setCursor(2 + valLength, 0);
-  lcd.print((char) 223);
-  lcd.setCursor(3 + valLength, 0);
+  lcd.setCursor(actualTempYOffset + valLength, 0);
+  lcd.print((char)223);
+  lcd.setCursor(actualTempYOffset + valLength + 1, 0);
   lcd.print(" ");
 
-  if (!plot && !tuning) {
-    Serial.print("    Humidity: ");
-    Serial.println(hum);
+  if (!plot && !tuning ) {
+	  Serial.print("    Humidity: ");
+	  Serial.println(hum);
   }
 
-  lcd.setCursor(0, 1);
-  lcd.print("Hum:");
-  lcd.setCursor(4, 1);
+  lcd.setCursor(humidityYOffset, 1);
+  lcd.print(humidityText);
+  valLength = humidityText.length(); // number of characters before digits
+  lcd.setCursor(humidityYOffset + valLength, 1);
   lcd.print(hum, 0);
-  valLength = intToStringToLength(hum);
-  lcd.setCursor(4 + valLength, 1);
+  dtostrf(hum, 1, 0, dtostrfbuffer);
+  valLength = valLength + strlen(dtostrfbuffer);
+  lcd.setCursor(humidityYOffset + valLength, 1);
   lcd.print("%  ");
 
   if (!plot && !tuning) {
@@ -540,11 +576,11 @@ void printActualValues() { // prints measured values to serial and LCD
 }
 
 void printPIDOutput() { // prints PID output to LCD
-  lcd.setCursor(9, 1);
+  lcd.setCursor(PIDYOffset, 1);
   int output = round(Output / 10);
   lcd.print(output);
   valLength = intToStringToLength(output);
-  lcd.setCursor(9 + valLength, 1);
+  lcd.setCursor(PIDYOffset + valLength, 1);
   lcd.print("%  ");
 }
 
@@ -570,6 +606,25 @@ void printHeatState() { // prints heat state (ie C, H or W) to LCD and serial
   }
   if (!plot && !tuning) {
     Serial.println();
+  }
+}
+
+void printFanState() { // prints fan state to LCD and serial
+  if ( fanState == 1 ) {
+	if (!plot && !tuning ) {
+	  Serial.println("Fan ON");
+	}
+	lcd.setCursor(14, 1);
+	lcd.print("F");
+  } else {
+	if (!plot && !tuning ) {
+	  Serial.println("Fan OFF");
+	}
+	lcd.setCursor(14, 1);
+	lcd.print(" ");
+  }
+  if (!plot && !tuning ) {
+	Serial.println();
   }
 }
 
