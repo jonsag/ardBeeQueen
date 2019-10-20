@@ -458,7 +458,7 @@ void printPIDOutput() { // prints PID output to LCD and serial
     Serial.println((heatRelayState) ? "On" : "OFF");
     Serial.println();
   }
-  
+
   lcd.setCursor(PIDYOffset, 1);
   int output = round(Output / 10);
   lcd.print(output);

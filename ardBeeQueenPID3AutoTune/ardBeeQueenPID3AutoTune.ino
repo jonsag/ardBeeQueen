@@ -1,9 +1,9 @@
 String programName = "ardBeeQueenPID3AutoTune";
-String date = "201910019";
+String date = "201910020";
 String author = "Jon Sagebrand";
 String email = "jonsagebrand@gmail.com";
 
-const bool plot = 1; // enable plotting function, all other output to serial will be suppressed
+const bool plot = 0; // enable plotting function, all other output to serial will be suppressed
 
 bool tuning = 0; // do PID AutoTune
 
@@ -274,7 +274,7 @@ void setup(void) {
     }
     lcd.setCursor(0, 1);
     lcd.print("Starting simulation mode ...");
-    
+
     for (byte i = 0; i < 50; i++) {
       theta[i] = OutputStart;
     }
@@ -288,7 +288,7 @@ void setup(void) {
     }
     lcd.setCursor(0, 1);
     lcd.print("Starting tuning ...");
-    
+
     tuning = false;
     changeAutoTune();
     tuning = true;
@@ -487,9 +487,10 @@ void loop(void) {
   }
 }
 
-// dewPoint function NOAA
-// reference: http://wahiduddin.net/calc/density_algorithms.htm
-double dewPointFunction(double celsius, double humidity) {
+/*
+  // dewPoint function NOAA
+  // reference: http://wahiduddin.net/calc/density_algorithms.htm
+  double dewPointFunction(double celsius, double humidity) {
   double A0 = 373.15 / (273.15 + celsius);
   double SUM = -7.90298 * (A0 - 1);
   SUM += 5.02808 * log10(A0);
@@ -499,19 +500,19 @@ double dewPointFunction(double celsius, double humidity) {
   double VP = pow(10, SUM - 3) * humidity;
   double T = log(VP / 0.61078);   // temp var
   return (241.88 * T) / (17.558 - T);
-}
+  }
 
-// delta max = 0.6544 wrt dewPoint()
-// 5x faster than dewPoint()
-// reference: http://en.wikipedia.org/wiki/Dew_point
-double dewPointFastFunction(double celsius, double humidity) {
+  // delta max = 0.6544 wrt dewPoint()
+  // 5x faster than dewPoint()
+  // reference: http://en.wikipedia.org/wiki/Dew_point
+  double dewPointFastFunction(double celsius, double humidity) {
   double a = 17.271;
   double b = 237.7;
   double temp = (a * celsius) / (b + celsius) + log(humidity / 100);
   double Td = (b * temp) / (a - temp);
   return Td;
-}
-
+  }
+*/
 int intToStringToLength(int val) { // returns how many numbers in integer
   valString = String(val);
   valLength = valString.length();
@@ -533,20 +534,23 @@ void printSetPoint() { // prints set point temp to LCD
 }
 
 void printActualValues() { // prints measured values to serial and LCD
-  // calculate dew points
-  dewPoint = dewPointFunction(temp, hum);
-  dewPointFast = dewPointFastFunction(temp, hum);
+  /*
+    // calculate dew points
+    dewPoint = dewPointFunction(temp, hum);
+    dewPointFast = dewPointFastFunction(temp, hum);
 
-  // compute heat index in Celsius (isFahrenheit = false)
-  hic = dht.computeHeatIndex(temp, hum, false);
-
+    // compute heat index in Celsius (isFahrenheit = false)
+    hic = dht.computeHeatIndex(temp, hum, false);
+  */
   if (!plot && !tuning) {
-    Serial.print("    Dew Point: ");
-    Serial.println(dewPoint);
-    Serial.print("    Dew Point Fast: ");
-    Serial.println(dewPointFast);
-    Serial.print("    Heat Index: ");
-    Serial.println(hic);
+    /*
+      Serial.print("    Dew Point: ");
+      Serial.println(dewPoint);
+      Serial.print("    Dew Point Fast: ");
+      Serial.println(dewPointFast);
+      Serial.print("    Heat Index: ");
+      Serial.println(hic);
+    */
     Serial.print("    Temperature: ");
     Serial.println(temp);
     Serial.print("    Humidity: ");
@@ -620,7 +624,7 @@ void printfanRelayState() { // prints fan state to LCD and serial
     lcd.setCursor(14, 1);
     lcd.print("x");
   }
-  
+
   if (!plot && !tuning) {
     Serial.println();
   }
