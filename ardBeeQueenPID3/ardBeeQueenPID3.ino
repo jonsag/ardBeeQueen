@@ -47,7 +47,7 @@ int heatState = 0; // current state of operation
 int heatStateLast = 0; // last state of operation
 // fan relay
 const int fanRelay = 4;  // relay cooling
-int fanRelayState;
+int fanRelayState = LOW; // fan is always on/off
 int fanState = 0; // current state of operation
 int fanStateLast = 0; // last state of operation
 
@@ -104,7 +104,7 @@ int lcdRows = 2;
 double setPointTemp = 34.5; // the goal temp, in degrees celsius
 double Output; // the PIDs output
 // specify tuning parameters
-double Kp = 0.1, Ki = 100.0, Kd = 25.0; // PID variables
+double Kp = 0.1, Ki = 5500.0, Kd = 1375.0; // PID variables
 PID myPID(&temp, &Output, &setPointTemp, Kp, Ki, Kd, DIRECT);
 // PID limits
 unsigned long windowSize = 30000; // the time which the PID distributes between ON and OFF
@@ -319,8 +319,6 @@ void loop(void) {
   /*******************************
    Fan
   *******************************/
-  fanRelayState = HIGH; // fan is always on
-  fanState = 1;
   digitalWrite(fanRelay, fanRelayState);
 
   if ( fanState != fanStateLast ) { // there has been a change in fan status
