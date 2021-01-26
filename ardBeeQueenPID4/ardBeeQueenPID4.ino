@@ -96,7 +96,17 @@ const int lcdRows = 2;
 double setPointTemp = 34.5; // the goal temp, in degrees celsius
 double Output; // the PIDs output
 
-double Kp = 0.1, Ki = 5500.0, Kd = 1375.0; // specify PID tuning variables
+/* PID tuning with the Ziegler-Nichols method
+ *  Kp0 = The amplification when self oscillation occurs
+ *  T0  = The period time of the oscillation
+ *        P         PI        PID
+ *   Kp   Kp0*0,5   Kp0*0,45  Kp0*0,6
+ *   Ti   Off       T0/1,2    T0/2
+ *   Td   Off       Off       T0/8
+*/
+//double Kp = 1, Ki = 2500.0, Kd = 625.0; // specify PID tuning variables
+//double Kp = 1, Ki = 1.0, Kd = 1.0; // specify PID tuning variables
+double Kp = 0.1, Ki = 5000.0, Kd = 1375.0; // specify PID tuning variables
 PID myPID(&temp, &Output, &setPointTemp, Kp, Ki, Kd, DIRECT);
 
 const unsigned long windowSize = 30000; // the time which the PID distributes between ON and OFF
